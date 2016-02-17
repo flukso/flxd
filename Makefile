@@ -1,20 +1,20 @@
 INCDIR =
 LIBDIR =
 
-EXE = flxd
-OBJS = main.o
-LIBS =
-CSTD = -std=gnu11
+BIN = flxd
+OBJS = main.o flx.o
+LIBS = -lubox
+CSTD = -std=gnu99
 WARN = -Wall -pedantic
 
 CFLAGS += -O2 $(CSTD) $(WARN) $(INCDIR)
 LDFLAGS += $(CSTD) $(LIBDIR)
 
-$(EXE): $(OBJS)
+$(BIN): $(OBJS)
 	$(CC) $(LDFLAGS) $(LIBS) $(OBJS) -o $@
 
 .c.o:
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 clean:
-	rm -f $(OBJS) $(EXE)
+	rm -f $(OBJS) $(BIN)

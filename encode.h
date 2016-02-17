@@ -22,63 +22,50 @@
  * SOFTWARE.
  */
 
-#include <stdbool.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <libubox/uloop.h>
-#include "config.h"
-#include "flx.h"
+#ifndef ENCODE_H
+#define ENCODE_H
 
-struct config conf = {
-	.verbosity = 0,
-	.flx_ufd = {
-		.cb = flx_rx
-	}
+#define ENCODE_BUFFER_SIZE 128
+#define ENCODE_SYNC_TL_LEN 4
+#define ENCODE_FLETCHER16_LEN 2
+
+struct encode_s {
+	unsigned char type;
+	const unsigned char *data;
+	size_t len;
 };
 
-static int usage(const char *progname)
+static inline unsigned short encode_fletcher16(unsigned char *data, size_t bytes)
 {
-	fprintf(stderr,
-		"Usage: %s [<options>]\n"
-		"Options:\n"
-		"  -v:	Turn on verbosity\n"
-		"\n", progname);
-	return 1;
+	unsigned short sum1 = 0xff, sum2 = 0xff;
+
+	while (bytes) {
+		size_t tlen = bytes > 20 ? 20 : bytes;
+		bytes -= tlen;
+		do {
+			sum2 += sum1 += *data++;
+		} while (--tlen);
+		sum1 = (sum1 & 0xff) + (sum1 >> 8);
+		sum2 = (sum2 & 0xff) + (sum2 >> 8);
+	}
+	/* Second reduction step to reduce sums to 8 bits */
+	sum1 = (sum1 & 0xff) + (sum1 >> 8);
+	sum2 = (sum2 & 0xff) + (sum2 >> 8);
+	return sum2 << 8 | sum1;
 }
 
-int main(int argc, char **argv)
+static inline void encode_handler(struct encode_s *e, unsigned char *telegram)
 {
-	int ret = 0;
-	int opt;
-
-	while ((opt = getopt(argc, argv, "hv")) != -1) {
-		switch (opt) {
-		case 'v':
-			conf.verbosity++;
-			break;
-		case 'h':
-		default:
-			return usage(argv[0]);
-		}	
+	*(telegram + 0) = 0xaa;
+	*(telegram + 1) = 0xaa;
+	*(telegram + 2) = e->type;
+	*(telegram + 3) = e->len;
+	for (int i = 0; i < e->len; i++) {
+		*(telegram + ENCODE_SYNC_TL_LEN + i) = *(e->data + i);
 	}
-
-	conf.flx_ufd.fd = open(FLX_DEV, O_RDWR);
-	if (conf.flx_ufd.fd < 0) {
-		perror(FLX_DEV);
-		ret = -1;
-		goto out;
-	}
-
-	uloop_init();
-	uloop_fd_add(&conf.flx_ufd, ULOOP_READ);
-	uloop_run();
-
-out:
-	uloop_done();
-	close(conf.flx_ufd.fd);
-	return ret;
+	unsigned short check = encode_fletcher16(telegram + 2, e->len + 2);
+	*(telegram + 4 + e->len) = (check >> 8) & 0xff;
+	*(telegram + 5 + e->len) = check & 0xff;
 }
 
+#endif

@@ -22,63 +22,31 @@
  * SOFTWARE.
  */
 
-#include <stdbool.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <libubox/uloop.h>
-#include "config.h"
-#include "flx.h"
+#ifndef FLX_H
+#define FLX_H
 
-struct config conf = {
-	.verbosity = 0,
-	.flx_ufd = {
-		.cb = flx_rx
-	}
+#include <libubox/uloop.h>
+
+#define FLX_DEV "/dev/ttyS0"
+#define FLX_BUFFER_SIZE 1024
+#define FLX_BUFFER_PEEK_SIZE 4
+#define FLX_PROTO_SYNC 0xaa
+
+enum flx_buffer_state {
+	FLX_BUFFER_STATE_SYNC1,
+	FLX_BUFFER_STATE_SYNC2,
+	FLX_BUFFER_STATE_HEAD
 };
 
-static int usage(const char *progname)
-{
-	fprintf(stderr,
-		"Usage: %s [<options>]\n"
-		"Options:\n"
-		"  -v:	Turn on verbosity\n"
-		"\n", progname);
-	return 1;
-}
+struct buffer_s {
+	size_t head;
+	size_t tail;
+	enum flx_buffer_state state;
+    /* unsigned qualifier needed for comparison with FLX_PROTO_SYNC */
+	unsigned char data[FLX_BUFFER_SIZE];
+};
 
-int main(int argc, char **argv)
-{
-	int ret = 0;
-	int opt;
+void flx_rx(struct uloop_fd *ufd, unsigned int events);
+int flx_tx(unsigned char type, unsigned char *data, size_t len);
 
-	while ((opt = getopt(argc, argv, "hv")) != -1) {
-		switch (opt) {
-		case 'v':
-			conf.verbosity++;
-			break;
-		case 'h':
-		default:
-			return usage(argv[0]);
-		}	
-	}
-
-	conf.flx_ufd.fd = open(FLX_DEV, O_RDWR);
-	if (conf.flx_ufd.fd < 0) {
-		perror(FLX_DEV);
-		ret = -1;
-		goto out;
-	}
-
-	uloop_init();
-	uloop_fd_add(&conf.flx_ufd, ULOOP_READ);
-	uloop_run();
-
-out:
-	uloop_done();
-	close(conf.flx_ufd.fd);
-	return ret;
-}
-
+#endif
