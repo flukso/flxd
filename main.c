@@ -23,36 +23,84 @@
  */
 
 #include <stdbool.h>
+#include <string.h>
 #include <stdio.h>
+#include <errno.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <uci.h>
 #include <libubox/uloop.h>
+#include <mosquitto.h>
 #include "config.h"
 #include "flx.h"
 
-struct config conf = {
-	.verbosity = 0,
-	.flx_ufd = {
-		.cb = flx_rx
+struct config conf;
+
+static bool load_uci_config(struct uci_context *ctx, char *param, char *value)
+{
+	struct uci_ptr ptr;
+	char str[FLXD_STR_MAX];
+
+	strncpy(str, param, FLXD_STR_MAX);
+	if (uci_lookup_ptr(ctx, &ptr, str, true) != UCI_OK) {
+		uci_perror(ctx, param);
+		return false;
 	}
-};
+	if (!(ptr.flags & UCI_LOOKUP_COMPLETE)) {
+		ctx->err = UCI_ERR_NOTFOUND;
+		uci_perror(ctx, param);
+		return false;
+	}
+	strncpy(value, ptr.o->v.string, FLXD_STR_MAX);
+	if (conf.verbosity > 0) {
+		printf("%s=%s\n", param, value);
+	}
+	return true;
+}
 
 static int usage(const char *progname)
 {
 	fprintf(stderr,
 		"Usage: %s [<options>]\n"
 		"Options:\n"
-		"  -v:	Turn on verbosity\n"
+		"  -v:	Increase verbosity\n"
 		"\n", progname);
 	return 1;
 }
 
+static void timer(struct uloop_timeout *t)
+{
+	static unsigned int counter = 0;
+
+	flx_tx(FLX_TYPE_PING, (unsigned char *)&counter, sizeof(counter));
+	uloop_timeout_set(t, FLXD_ULOOP_TIMEOUT);
+}
+
+struct config conf = {
+	.me = "flxd",
+	.verbosity = 0,
+	.flx_ufd = {
+		.cb = flx_rx
+	},
+	.timeout = {
+		.cb = timer
+	},
+	.mqtt = {
+		.host = "localhost",
+		.port = 1883,
+		.keepalive = 60,
+		.clean_session = true,
+		.qos = 0,
+		.retain = 0
+	}
+};
+
 int main(int argc, char **argv)
 {
-	int ret = 0;
-	int opt;
+	int i, opt, rc = 0;
+	char param[FLXD_STR_MAX];
 
 	while ((opt = getopt(argc, argv, "hv")) != -1) {
 		switch (opt) {
@@ -65,20 +113,78 @@ int main(int argc, char **argv)
 		}	
 	}
 
+	conf.uci_ctx = uci_alloc_context();
+	if (!conf.uci_ctx) {
+		rc = 1;
+		goto oom;
+	}
+
+	rc = 2;
+	if (!load_uci_config(conf.uci_ctx, FLXD_UCI_DEVICE, conf.device))
+		goto finish;
+	for (i = 0; i < FLXD_SID_MAX; i++) {
+		snprintf(param, FLXD_STR_MAX, FLXD_UCI_SID_TPL, i + 1);
+		if (!load_uci_config(conf.uci_ctx, param, conf.sid[i]))
+			goto finish;
+	}
+	rc = 0;
+
+	mosquitto_lib_init();
+	snprintf(conf.mqtt.id, MQTT_ID_LEN, MQTT_ID_TPL, getpid());
+	conf.mosq = mosquitto_new(conf.mqtt.id, conf.mqtt.clean_session, &conf);
+	if (!conf.mosq) {
+		switch (errno) {
+		case ENOMEM:
+			rc = 3;
+			goto oom;
+		case EINVAL:
+			fprintf(stderr, "mosq_new: Invalid id and/or clean_session.\n");
+			rc = 4;
+			goto finish;
+		}
+	}
+	rc = mosquitto_loop_start(conf.mosq);
+	switch (rc) {
+	case MOSQ_ERR_INVAL:
+		fprintf(stderr, "mosq_loop_start: Invalid input parameters.\n");
+		goto finish;
+	case MOSQ_ERR_NOT_SUPPORTED:
+		fprintf(stderr, "mosq_loop_start: No threading support.\n");
+		goto finish;
+	};
+	rc = mosquitto_connect_async(conf.mosq, conf.mqtt.host, conf.mqtt.port,
+	                  conf.mqtt.keepalive);
+	switch (rc) {
+	case MOSQ_ERR_INVAL:
+		fprintf(stderr, "mosq_connect_async: Invalid input parameters.\n");
+		goto finish;
+	case MOSQ_ERR_ERRNO:
+		perror("mosq_connect_async");
+		goto finish;
+	}
+
 	conf.flx_ufd.fd = open(FLX_DEV, O_RDWR);
 	if (conf.flx_ufd.fd < 0) {
 		perror(FLX_DEV);
-		ret = -1;
-		goto out;
+		rc = 5;
+		goto finish;
 	}
-
 	uloop_init();
 	uloop_fd_add(&conf.flx_ufd, ULOOP_READ);
+	uloop_timeout_set(&conf.timeout, FLXD_ULOOP_TIMEOUT);
 	uloop_run();
-
-out:
 	uloop_done();
 	close(conf.flx_ufd.fd);
-	return ret;
+	goto finish;
+
+oom:
+	fprintf(stderr, "error: Out of memory.\n");
+finish:
+	mosquitto_disconnect(conf.mosq);
+	mosquitto_loop_stop(conf.mosq, false);
+	mosquitto_destroy(conf.mosq);
+	mosquitto_lib_cleanup();
+	uci_free_context(conf.uci_ctx);
+	return rc;
 }
 

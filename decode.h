@@ -25,8 +25,10 @@
 #ifndef DECODE_H
 #define DECODE_H
 
-#define DECODE_MAX_TYPES 10
 #define DECODE_BUFFER_SIZE 1024
+
+#define DECODE_TOPIC_VOLTAGE "/device/%s/debug/flx/voltage/%d"
+#define DECODE_TOPIC_CURRENT "/device/%s/debug/flx/current/%d"
 
 #define DECODE_DEBUG_SAMPLES 32
 #define DECODE_DEBUG_SERIES_VOLTAGE "[[%lu,%hu],["\
@@ -48,19 +50,6 @@ enum decode_dest {
 	DECODE_DEST_FLX,
 	DECODE_DEST_UBUS,
 	DECODE_DEST_MQTT
-};
-
-enum decode_type {
-	DECODE_TYPE_PING,
-	DECODE_TYPE_PONG,
-	DECODE_TYPE_TIME_STAMP,
-	DECODE_TYPE_TIME_STEP,
-	DECODE_TYPE_TIME_SLEW,
-	DECODE_TYPE_DEBUG,
-	DECODE_TYPE_DEBUG_VOLTAGE,
-	DECODE_TYPE_DEBUG_CURRENT1,
-	DECODE_TYPE_DEBUG_CURRENT2,
-	DECODE_TYPE_DEBUG_CURRENT3
 };
 
 struct decode_s {
@@ -93,7 +82,7 @@ static int decode_pong(struct buffer_s *b, struct decode_s *d)
 {
 	int i;
 	d->dest = DECODE_DEST_DAEMON;
-	d->type = DECODE_TYPE_PONG;
+	d->type = FLX_TYPE_PONG;
 	d->len = b->data[(b->tail + 1) % FLX_BUFFER_SIZE];
 	for (i = 0; i < d->len; i++) {
 		d->data[i] = b->data[(b->tail + 2 + i) % FLX_BUFFER_SIZE];
@@ -104,10 +93,11 @@ static int decode_pong(struct buffer_s *b, struct decode_s *d)
 static int decode_debug_voltage(struct buffer_s *b, struct decode_s *d)
 {
 	int i, len;
+	char topic[FLXD_STR_MAX];
 	struct debug_voltage_s dv;
 
 	d->dest = DECODE_DEST_MQTT;
-	d->type = DECODE_TYPE_DEBUG_VOLTAGE;
+	d->type = FLX_TYPE_DEBUG_VOLTAGE1;
 	len = b->data[(b->tail + 1) % FLX_BUFFER_SIZE];
 	for (i = 0; i < len; i++) {
 		*((unsigned char *)&dv + i) = b->data[(b->tail + 2 + i) % FLX_BUFFER_SIZE];
@@ -149,16 +139,21 @@ static int decode_debug_voltage(struct buffer_s *b, struct decode_s *d)
 	    ltobs(dv.adc[29]),
 	    ltobs(dv.adc[30]),
 	    ltobs(dv.adc[31]));
+	snprintf(topic, FLXD_STR_MAX, DECODE_TOPIC_VOLTAGE, conf.device,
+	         d->type - FLX_TYPE_DEBUG_VOLTAGE1 + 1);
+	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
+	                  conf.mqtt.retain);
 	return 1;
 }
 
 static int decode_debug_current(struct buffer_s *b, struct decode_s *d)
 {
 	int i, len;
+	char topic[FLXD_STR_MAX];
 	struct debug_current_s dc;
 
 	d->dest = DECODE_DEST_MQTT;
-	d->type = b->data[b->tail]; /* DECODE_TYPE_DEBUG_CURRENT[1|2|3] */
+	d->type = b->data[b->tail]; /* FLX_TYPE_DEBUG_CURRENT[1|2|3] */
 	len = b->data[(b->tail + 1) % FLX_BUFFER_SIZE];
 	for (i = 0; i < len; i++) {
 		*((unsigned char *)&dc + i) = b->data[(b->tail + 2 + i) % FLX_BUFFER_SIZE];
@@ -200,6 +195,10 @@ static int decode_debug_current(struct buffer_s *b, struct decode_s *d)
 	    ltobs(dc.adc[29]),
 	    ltobs(dc.adc[30]),
 	    ltobs(dc.adc[31]));
+	snprintf(topic, FLXD_STR_MAX, DECODE_TOPIC_CURRENT, conf.device,
+	         d->type - FLX_TYPE_DEBUG_CURRENT1 + 1);
+	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
+	                  conf.mqtt.retain);
 	return 1;
 }
 
@@ -212,9 +211,9 @@ static const decode_fun decode_handler[] = {
 	decode_void, /* TODO time slew */
 	decode_void, /* TODO debug */
 	decode_debug_voltage,
-	decode_debug_current, /* DECODE_TYPE_DEBUG_CURRENT1 */
-	decode_debug_current, /* DECODE_TYPE_DEBUG_CURRENT2 */
-	decode_debug_current  /* DECODE_TYPE_DEBUG_CURRENT3 */
+	decode_debug_current, /* FLX_TYPE_DEBUG_CURRENT1 */
+	decode_debug_current, /* FLX_TYPE_DEBUG_CURRENT2 */
+	decode_debug_current  /* FLX_TYPE_DEBUG_CURRENT3 */
 };
 
 #endif

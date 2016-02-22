@@ -22,9 +22,11 @@
  * SOFTWARE.
  */
 
+#include <string.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <mosquitto.h>
 #include "config.h"
 #include "flx.h"
 #include "decode.h"
@@ -124,11 +126,11 @@ static void flx_decode(struct buffer_s *b)
 {
 	struct decode_s d;
 	unsigned char type = b->data[b->tail];
-	if (type >= DECODE_MAX_TYPES || !decode_handler[type](b, &d)) {
+	if (type >= FLX_MAX_TYPES || !decode_handler[type](b, &d)) {
 		return;
 	}
-	d.data[d.len] = '\0';
-	if (conf.verbosity > 0) {
+	if (conf.verbosity > 1) {
+		d.data[d.len] = '\0';
 		fprintf(stdout, "[dest:%d] [type:%d] [len:%d] %s\n",
 		        d.dest, d.type, d.len, d.data);
 	}
@@ -183,7 +185,7 @@ void flx_rx(struct uloop_fd *ufd, unsigned int events)
 
 	bytes_read = read(ufd->fd, &b.data[b.head], flx_buffer_max_read(&b));	
 	flx_buffer_advance_head(&b, bytes_read);
-	if (conf.verbosity > 0) {
+	if (conf.verbosity > 2) {
 		flx_buffer_dbg(&b);
 	}
 	flx_pop(&b);
