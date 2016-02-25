@@ -71,14 +71,14 @@ struct debug_current_s {
 	short adc[DECODE_DEBUG_SAMPLES];
 };
 
-typedef int (*decode_fun)(struct buffer_s *, struct decode_s *);
+typedef bool (*decode_fun)(struct buffer_s *, struct decode_s *);
 
-static int decode_void(struct buffer_s *b, struct decode_s *d)
+static bool decode_void(struct buffer_s *b, struct decode_s *d)
 {
-	return 0;
+	return false;
 }
 
-static int decode_pong(struct buffer_s *b, struct decode_s *d)
+static bool decode_pong(struct buffer_s *b, struct decode_s *d)
 {
 	int i;
 	d->dest = DECODE_DEST_DAEMON;
@@ -87,10 +87,10 @@ static int decode_pong(struct buffer_s *b, struct decode_s *d)
 	for (i = 0; i < d->len; i++) {
 		d->data[i] = b->data[(b->tail + 2 + i) % FLX_BUFFER_SIZE];
 	}
-	return 1;
+	return true;
 }
 
-static int decode_debug_voltage(struct buffer_s *b, struct decode_s *d)
+static bool decode_debug_voltage(struct buffer_s *b, struct decode_s *d)
 {
 	int i, len;
 	char topic[FLXD_STR_MAX];
@@ -143,10 +143,10 @@ static int decode_debug_voltage(struct buffer_s *b, struct decode_s *d)
 	         d->type - FLX_TYPE_DEBUG_VOLTAGE1 + 1);
 	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
 	                  conf.mqtt.retain);
-	return 1;
+	return true;
 }
 
-static int decode_debug_current(struct buffer_s *b, struct decode_s *d)
+static bool decode_debug_current(struct buffer_s *b, struct decode_s *d)
 {
 	int i, len;
 	char topic[FLXD_STR_MAX];
@@ -199,7 +199,7 @@ static int decode_debug_current(struct buffer_s *b, struct decode_s *d)
 	         d->type - FLX_TYPE_DEBUG_CURRENT1 + 1);
 	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
 	                  conf.mqtt.retain);
-	return 1;
+	return true;
 }
 
 
