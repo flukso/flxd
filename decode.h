@@ -30,11 +30,11 @@
 #define DECODE_TOPIC_VOLTAGE "/device/%s/debug/flx/voltage/%d"
 #define DECODE_TOPIC_CURRENT "/device/%s/debug/flx/current/%d"
 
-#define DECODE_DEBUG_SAMPLES 32
-#define DECODE_DEBUG_SERIES_VOLTAGE "[[%lu,%hu],["\
+#define DECODE_NUM_SAMPLES 32
+#define DECODE_SERIES_VOLTAGE "[[%lu,%hu],["\
 	"%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,"\
 	"%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu],\"V\"]"
-#define DECODE_DEBUG_SERIES_CURRENT "[[%lu,%hu],["\
+#define DECODE_SERIES_CURRENT "[[%lu,%hu],["\
 	"%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,"\
 	"%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd],\"A\"]"
 
@@ -59,16 +59,16 @@ struct decode_s {
 	size_t len;
 };
 
-struct debug_voltage_s {
+struct voltage_s {
 	unsigned int time;
 	unsigned short millis;
-	unsigned short adc[DECODE_DEBUG_SAMPLES];
+	unsigned short adc[DECODE_NUM_SAMPLES];
 };
 
-struct debug_current_s {
+struct current_s {
 	unsigned int time;
 	unsigned short millis;
-	short adc[DECODE_DEBUG_SAMPLES];
+	short adc[DECODE_NUM_SAMPLES];
 };
 
 typedef bool (*decode_fun)(struct buffer_s *, struct decode_s *);
@@ -90,26 +90,26 @@ static bool decode_pong(struct buffer_s *b, struct decode_s *d)
 	return true;
 }
 
-static bool decode_debug_voltage(struct buffer_s *b, struct decode_s *d)
+static bool decode_voltage(struct buffer_s *b, struct decode_s *d)
 {
 	int i, len;
 	char topic[FLXD_STR_MAX];
-	struct debug_voltage_s dv;
+	struct voltage_s dv;
 
 	d->dest = DECODE_DEST_MQTT;
-	d->type = FLX_TYPE_DEBUG_VOLTAGE1;
+	d->type = FLX_TYPE_VOLTAGE1;
 	len = b->data[(b->tail + 1) % FLX_BUFFER_SIZE];
 	for (i = 0; i < len; i++) {
 		*((unsigned char *)&dv + i) = b->data[(b->tail + 2 + i) % FLX_BUFFER_SIZE];
 	}
 	dv.time = ltobl(dv.time);
 	dv.millis = ltobs(dv.millis);
-	for (i = 0; i < DECODE_DEBUG_SAMPLES; i++) {
+	for (i = 0; i < DECODE_NUM_SAMPLES; i++) {
 		dv.adc[i] = ltobs(dv.adc[i]);
 	}
 	d->len = snprintf((char *)d->data,
 	    DECODE_BUFFER_SIZE,
-	    DECODE_DEBUG_SERIES_VOLTAGE,
+	    DECODE_SERIES_VOLTAGE,
 	    (unsigned long)dv.time,
 	    dv.millis,
 	    dv.adc[0],
@@ -145,35 +145,35 @@ static bool decode_debug_voltage(struct buffer_s *b, struct decode_s *d)
 	    dv.adc[30],
 	    dv.adc[31]);
 	snprintf(topic, FLXD_STR_MAX, DECODE_TOPIC_VOLTAGE, conf.device,
-	         d->type - FLX_TYPE_DEBUG_VOLTAGE1 + 1);
+	         d->type - FLX_TYPE_VOLTAGE1 + 1);
 	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
 	                  conf.mqtt.retain);
 #ifdef WITH_YKW
-	ykw_process_voltage(conf.ykw, dv.time, dv.millis, dv.adc, DECODE_DEBUG_SAMPLES);
+	ykw_process_voltage(conf.ykw, dv.time, dv.millis, dv.adc, DECODE_NUM_SAMPLES);
 #endif
 	return true;
 }
 
-static bool decode_debug_current(struct buffer_s *b, struct decode_s *d)
+static bool decode_current(struct buffer_s *b, struct decode_s *d)
 {
 	int i, len;
 	char topic[FLXD_STR_MAX];
-	struct debug_current_s dc;
+	struct current_s dc;
 
 	d->dest = DECODE_DEST_MQTT;
-	d->type = b->data[b->tail]; /* FLX_TYPE_DEBUG_CURRENT[1|2|3] */
+	d->type = b->data[b->tail]; /* FLX_TYPE_CURRENT[1|2|3] */
 	len = b->data[(b->tail + 1) % FLX_BUFFER_SIZE];
 	for (i = 0; i < len; i++) {
 		*((unsigned char *)&dc + i) = b->data[(b->tail + 2 + i) % FLX_BUFFER_SIZE];
 	}
 	dc.time = ltobl(dc.time);
 	dc.millis = ltobs(dc.millis);
-	for (i = 0; i < DECODE_DEBUG_SAMPLES; i++) {
+	for (i = 0; i < DECODE_NUM_SAMPLES; i++) {
 		dc.adc[i] = ltobs(dc.adc[i]);
 	}
 	d->len = snprintf((char *)d->data,
 	    DECODE_BUFFER_SIZE,
-	    DECODE_DEBUG_SERIES_CURRENT,
+	    DECODE_SERIES_CURRENT,
 	    (unsigned long)dc.time,
 	    dc.millis,
 	    dc.adc[0],
@@ -209,12 +209,12 @@ static bool decode_debug_current(struct buffer_s *b, struct decode_s *d)
 	    dc.adc[30],
 	    dc.adc[31]);
 	snprintf(topic, FLXD_STR_MAX, DECODE_TOPIC_CURRENT, conf.device,
-	         d->type - FLX_TYPE_DEBUG_CURRENT1 + 1);
+	         d->type - FLX_TYPE_CURRENT1 + 1);
 	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
 	                  conf.mqtt.retain);
 #ifdef WITH_YKW
 	ykw_process_current(conf.ykw, dc.time, dc.millis,
-	    d->type - FLX_TYPE_DEBUG_CURRENT1, dc.adc, DECODE_DEBUG_SAMPLES);
+	    d->type - FLX_TYPE_CURRENT1, dc.adc, DECODE_NUM_SAMPLES);
 #endif
 	return true;
 }
@@ -227,10 +227,10 @@ static const decode_fun decode_handler[] = {
 	decode_void, /* TODO time step */
 	decode_void, /* TODO time slew */
 	decode_void, /* TODO debug */
-	decode_debug_voltage,
-	decode_debug_current, /* FLX_TYPE_DEBUG_CURRENT1 */
-	decode_debug_current, /* FLX_TYPE_DEBUG_CURRENT2 */
-	decode_debug_current  /* FLX_TYPE_DEBUG_CURRENT3 */
+	decode_voltage,
+	decode_current, /* FLX_TYPE_CURRENT1 */
+	decode_current, /* FLX_TYPE_CURRENT2 */
+	decode_current  /* FLX_TYPE_CURRENT3 */
 };
 
 #endif
