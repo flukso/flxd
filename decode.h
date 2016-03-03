@@ -61,13 +61,13 @@ struct decode_s {
 
 struct debug_voltage_s {
 	unsigned int time;
-	unsigned short seq;
+	unsigned short millis;
 	unsigned short adc[DECODE_DEBUG_SAMPLES];
 };
 
 struct debug_current_s {
 	unsigned int time;
-	unsigned short seq;
+	unsigned short millis;
 	short adc[DECODE_DEBUG_SAMPLES];
 };
 
@@ -102,47 +102,55 @@ static bool decode_debug_voltage(struct buffer_s *b, struct decode_s *d)
 	for (i = 0; i < len; i++) {
 		*((unsigned char *)&dv + i) = b->data[(b->tail + 2 + i) % FLX_BUFFER_SIZE];
 	}
+	dv.time = ltobl(dv.time);
+	dv.millis = ltobs(dv.millis);
+	for (i = 0; i < DECODE_DEBUG_SAMPLES; i++) {
+		dv.adc[i] = ltobs(dv.adc[i]);
+	}
 	d->len = snprintf((char *)d->data,
 	    DECODE_BUFFER_SIZE,
 	    DECODE_DEBUG_SERIES_VOLTAGE,
-	    (unsigned long)ltobl(dv.time),
-	    ltobs(dv.seq),
-	    ltobs(dv.adc[0]),
-	    ltobs(dv.adc[1]),
-	    ltobs(dv.adc[2]),
-	    ltobs(dv.adc[3]),
-	    ltobs(dv.adc[4]),
-	    ltobs(dv.adc[5]),
-	    ltobs(dv.adc[6]),
-	    ltobs(dv.adc[7]),
-	    ltobs(dv.adc[8]),
-	    ltobs(dv.adc[9]),
-	    ltobs(dv.adc[10]),
-	    ltobs(dv.adc[11]),
-	    ltobs(dv.adc[12]),
-	    ltobs(dv.adc[13]),
-	    ltobs(dv.adc[14]),
-	    ltobs(dv.adc[15]),
-	    ltobs(dv.adc[16]),
-	    ltobs(dv.adc[17]),
-	    ltobs(dv.adc[18]),
-	    ltobs(dv.adc[19]),
-	    ltobs(dv.adc[20]),
-	    ltobs(dv.adc[21]),
-	    ltobs(dv.adc[22]),
-	    ltobs(dv.adc[23]),
-	    ltobs(dv.adc[24]),
-	    ltobs(dv.adc[25]),
-	    ltobs(dv.adc[26]),
-	    ltobs(dv.adc[27]),
-	    ltobs(dv.adc[28]),
-	    ltobs(dv.adc[29]),
-	    ltobs(dv.adc[30]),
-	    ltobs(dv.adc[31]));
+	    (unsigned long)dv.time,
+	    dv.millis,
+	    dv.adc[0],
+	    dv.adc[1],
+	    dv.adc[2],
+	    dv.adc[3],
+	    dv.adc[4],
+	    dv.adc[5],
+	    dv.adc[6],
+	    dv.adc[7],
+	    dv.adc[8],
+	    dv.adc[9],
+	    dv.adc[10],
+	    dv.adc[11],
+	    dv.adc[12],
+	    dv.adc[13],
+	    dv.adc[14],
+	    dv.adc[15],
+	    dv.adc[16],
+	    dv.adc[17],
+	    dv.adc[18],
+	    dv.adc[19],
+	    dv.adc[20],
+	    dv.adc[21],
+	    dv.adc[22],
+	    dv.adc[23],
+	    dv.adc[24],
+	    dv.adc[25],
+	    dv.adc[26],
+	    dv.adc[27],
+	    dv.adc[28],
+	    dv.adc[29],
+	    dv.adc[30],
+	    dv.adc[31]);
 	snprintf(topic, FLXD_STR_MAX, DECODE_TOPIC_VOLTAGE, conf.device,
 	         d->type - FLX_TYPE_DEBUG_VOLTAGE1 + 1);
 	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
 	                  conf.mqtt.retain);
+#ifdef WITH_YKW
+	ykw_process_voltage(conf.ykw, dv.time, dv.millis, dv.adc, DECODE_DEBUG_SAMPLES);
+#endif
 	return true;
 }
 
@@ -158,47 +166,56 @@ static bool decode_debug_current(struct buffer_s *b, struct decode_s *d)
 	for (i = 0; i < len; i++) {
 		*((unsigned char *)&dc + i) = b->data[(b->tail + 2 + i) % FLX_BUFFER_SIZE];
 	}
+	dc.time = ltobl(dc.time);
+	dc.millis = ltobs(dc.millis);
+	for (i = 0; i < DECODE_DEBUG_SAMPLES; i++) {
+		dc.adc[i] = ltobs(dc.adc[i]);
+	}
 	d->len = snprintf((char *)d->data,
 	    DECODE_BUFFER_SIZE,
 	    DECODE_DEBUG_SERIES_CURRENT,
-	    (unsigned long)ltobl(dc.time),
-	    ltobs(dc.seq),
-	    ltobs(dc.adc[0]),
-	    ltobs(dc.adc[1]),
-	    ltobs(dc.adc[2]),
-	    ltobs(dc.adc[3]),
-	    ltobs(dc.adc[4]),
-	    ltobs(dc.adc[5]),
-	    ltobs(dc.adc[6]),
-	    ltobs(dc.adc[7]),
-	    ltobs(dc.adc[8]),
-	    ltobs(dc.adc[9]),
-	    ltobs(dc.adc[10]),
-	    ltobs(dc.adc[11]),
-	    ltobs(dc.adc[12]),
-	    ltobs(dc.adc[13]),
-	    ltobs(dc.adc[14]),
-	    ltobs(dc.adc[15]),
-	    ltobs(dc.adc[16]),
-	    ltobs(dc.adc[17]),
-	    ltobs(dc.adc[18]),
-	    ltobs(dc.adc[19]),
-	    ltobs(dc.adc[20]),
-	    ltobs(dc.adc[21]),
-	    ltobs(dc.adc[22]),
-	    ltobs(dc.adc[23]),
-	    ltobs(dc.adc[24]),
-	    ltobs(dc.adc[25]),
-	    ltobs(dc.adc[26]),
-	    ltobs(dc.adc[27]),
-	    ltobs(dc.adc[28]),
-	    ltobs(dc.adc[29]),
-	    ltobs(dc.adc[30]),
-	    ltobs(dc.adc[31]));
+	    (unsigned long)dc.time,
+	    dc.millis,
+	    dc.adc[0],
+	    dc.adc[1],
+	    dc.adc[2],
+	    dc.adc[3],
+	    dc.adc[4],
+	    dc.adc[5],
+	    dc.adc[6],
+	    dc.adc[7],
+	    dc.adc[8],
+	    dc.adc[9],
+	    dc.adc[10],
+	    dc.adc[11],
+	    dc.adc[12],
+	    dc.adc[13],
+	    dc.adc[14],
+	    dc.adc[15],
+	    dc.adc[16],
+	    dc.adc[17],
+	    dc.adc[18],
+	    dc.adc[19],
+	    dc.adc[20],
+	    dc.adc[21],
+	    dc.adc[22],
+	    dc.adc[23],
+	    dc.adc[24],
+	    dc.adc[25],
+	    dc.adc[26],
+	    dc.adc[27],
+	    dc.adc[28],
+	    dc.adc[29],
+	    dc.adc[30],
+	    dc.adc[31]);
 	snprintf(topic, FLXD_STR_MAX, DECODE_TOPIC_CURRENT, conf.device,
 	         d->type - FLX_TYPE_DEBUG_CURRENT1 + 1);
 	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
 	                  conf.mqtt.retain);
+#ifdef WITH_YKW
+	ykw_process_current(conf.ykw, dc.time, dc.millis,
+	    d->type - FLX_TYPE_DEBUG_CURRENT1, dc.adc, DECODE_DEBUG_SAMPLES);
+#endif
 	return true;
 }
 

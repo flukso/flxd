@@ -129,17 +129,24 @@ int main(int argc, char **argv)
 	}
 	rc = 0;
 
+#ifdef WITH_YKW
+	conf.ykw = ykw_new(YKW_DEFAULT_THETA);
+	if (conf.ykw == NULL) {
+		rc = 3;
+		goto oom;
+	}
+#endif
 	mosquitto_lib_init();
 	snprintf(conf.mqtt.id, MQTT_ID_LEN, MQTT_ID_TPL, getpid());
 	conf.mosq = mosquitto_new(conf.mqtt.id, conf.mqtt.clean_session, &conf);
 	if (!conf.mosq) {
 		switch (errno) {
 		case ENOMEM:
-			rc = 3;
+			rc = 4;
 			goto oom;
 		case EINVAL:
 			fprintf(stderr, "mosq_new: Invalid id and/or clean_session.\n");
-			rc = 4;
+			rc = 5;
 			goto finish;
 		}
 	}
@@ -166,7 +173,7 @@ int main(int argc, char **argv)
 	conf.flx_ufd.fd = open(FLX_DEV, O_RDWR);
 	if (conf.flx_ufd.fd < 0) {
 		perror(FLX_DEV);
-		rc = 5;
+		rc = 6;
 		goto finish;
 	}
 	uloop_init();
@@ -184,6 +191,7 @@ finish:
 	mosquitto_loop_stop(conf.mosq, false);
 	mosquitto_destroy(conf.mosq);
 	mosquitto_lib_cleanup();
+	ykw_free(conf.ykw);
 	uci_free_context(conf.uci_ctx);
 	return rc;
 }

@@ -3,6 +3,9 @@
 
 #include <libubox/uloop.h>
 #include <mosquitto.h>
+#ifdef WITH_YKW
+#include <ykw.h>
+#endif
 
 #define FLXD_STR_MAX		64
 #define FLXD_SID_MAX		12
@@ -33,6 +36,9 @@ struct config {
 	struct uloop_timeout timeout;
 	struct mqtt mqtt;
 	struct mosquitto *mosq;
+#ifdef WITH_YKW
+	struct ykw_ctx *ykw;
+#endif
 };
 
 extern struct config conf;
