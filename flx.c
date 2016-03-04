@@ -166,6 +166,8 @@ static void flx_pop(struct buffer_s *b)
 			}
 			if (flx_check_fletcher16(b)) {
 				flx_decode(b);
+			} else if (conf.verbosity > 0) {
+				fprintf(stdout, "[flx] fletcher16 checksum error");
 			}
 			b->state = FLX_BUFFER_STATE_SYNC1;
 			flx_buffer_advance_tail(b, packet_size);

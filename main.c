@@ -30,6 +30,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <termios.h>
 #include <uci.h>
 #include <libubox/uloop.h>
 #include <mosquitto.h>
@@ -37,6 +38,27 @@
 #include "flx.h"
 
 struct config conf;
+
+static bool configure_tty(int fd)
+{
+	struct termios term;
+
+	if (tcgetattr(fd, &term) == -1)
+		return false;
+	if (cfsetospeed(&term, B921600) == -1)
+		return false;
+	/* configure tty in raw mode */
+	term.c_iflag &= ~(BRKINT | ICRNL | IGNBRK | IGNCR | INLCR | INPCK |
+	                  ISTRIP | IXOFF | IXON | PARMRK);
+	term.c_oflag &= ~OPOST;
+	term.c_cflag &= ~PARENB;
+	term.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
+	term.c_cc[VMIN] = 1;
+	term.c_cc[VTIME] = 0;
+	if (tcsetattr(fd, TCSAFLUSH, &term) == -1)
+		return false;
+	return true;
+}
 
 static bool load_uci_config(struct uci_context *ctx, char *param, char *value)
 {
@@ -174,6 +196,11 @@ int main(int argc, char **argv)
 	if (conf.flx_ufd.fd < 0) {
 		perror(FLX_DEV);
 		rc = 6;
+		goto finish;
+	}
+	if (!configure_tty(conf.flx_ufd.fd)) {
+		fprintf(stderr, "%s: Failed to configure tty params", FLX_DEV);
+		rc = 7;
 		goto finish;
 	}
 	uloop_init();
