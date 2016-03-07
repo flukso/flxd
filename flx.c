@@ -22,10 +22,12 @@
  * SOFTWARE.
  */
 
+#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <sys/time.h>
 #include <mosquitto.h>
 #include "config.h"
 #include "flx.h"
