@@ -31,6 +31,8 @@
 #define DECODE_TOPIC_VOLTAGE "/device/%s/debug/flx/voltage/%d"
 #define DECODE_TOPIC_CURRENT "/device/%s/debug/flx/current/%d"
 #define DECODE_TOPIC_TIME "/device/%s/debug/flx/time"
+#define DECODE_TOPIC_COUNTER "/sensor/%s/counter"
+#define DECODE_TOPIC_GAUGE "/sensor/%s/gauge"
 
 #define DECODE_NUM_SAMPLES 32
 #define DECODE_VOLTAGE "[[%d,%d],["\
@@ -40,6 +42,10 @@
 	"%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,"\
 	"%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd],\"A\"]"
 #define DECODE_TIME "{flm:{time:[%d,%d],update:%s},flx:{time:[%d,%d],update:%s}}"
+#define DECODE_COUNTER "[%d, %u, \"%s\"]"
+#define DECODE_COUNTER_FRAC "[%d, %u.%03u, \"%s\"]"
+#define DECODE_GAUGE "[%d, %d, \"%s\"]"
+#define DECODE_GAUGE_FRAC "[%d, %d.%03u, \"%s\"]"
 
 #define ltobs(A) ((((uint16_t)(A) & 0xff00) >> 8) | \
 	              (((uint16_t)(A) & 0x00ff) << 8))
@@ -60,6 +66,59 @@ struct decode_s {
 	unsigned char type;
 	unsigned char data[DECODE_BUFFER_SIZE];
 	size_t len;
+};
+
+enum decode_ct_params {
+	DECODE_CT_PARAM_PPLUS,
+	DECODE_CT_PARAM_PMINUS,
+	DECODE_CT_PARAM_Q1,
+	DECODE_CT_PARAM_Q2,
+	DECODE_CT_PARAM_Q3,
+	DECODE_CT_PARAM_Q4,
+	DECODE_CT_PARAM_VRMS,
+	DECODE_CT_PARAM_IRMS,
+	DECODE_CT_PARAM_PF,
+	DECODE_CT_PARAM_VTHD,
+	DECODE_CT_PARAM_ITHD,
+	DECODE_MAX_CT_PARAMS
+};
+
+char *decode_ct_counter_dim[] = {
+	"Wh",
+	"Wh",
+	"VARh",
+	"VARh",
+	"VARh",
+	"VARh"
+};
+
+char *decode_ct_gauge_dim[] = {
+	"W",
+	"W",
+	"VAR",
+	"VAR",
+	"VAR",
+	"VAR",
+	"V",
+	"A",
+	"",
+	"",
+	""
+};
+
+struct ct_data_gauge_s {
+	uint16_t frac;
+	int16_t integ;
+};
+
+struct ct_data_s {
+	uint32_t time;
+	uint16_t millis;
+	uint8_t port;
+	uint8_t null; /* alignment */
+	uint32_t counter_integ[DECODE_CT_PARAM_Q4 + 1];
+	uint16_t counter_frac[DECODE_CT_PARAM_Q4 + 1];
+	struct ct_data_gauge_s gauge[DECODE_MAX_CT_PARAMS];
 };
 
 struct voltage_s {
@@ -154,6 +213,75 @@ static bool decode_time_stamp(struct buffer_s *b, struct decode_s *d)
 	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
 	                  conf.mqtt.retain);
 	return true;
+}
+
+static void decode_pub_counter(char *sid, uint32_t time, uint32_t counter,
+                               uint16_t frac, char *unit)
+{
+	int len;
+	char topic[FLXD_STR_MAX];
+	char data[FLXD_STR_MAX];
+
+	snprintf(topic, FLXD_STR_MAX, DECODE_TOPIC_COUNTER, sid);
+	if (frac == 0) {
+		len = snprintf(data, FLXD_STR_MAX, DECODE_COUNTER, time, counter, unit);
+	} else {
+		len = snprintf(data, FLXD_STR_MAX, DECODE_COUNTER_FRAC, time,
+		               counter, frac, unit);
+	}
+	mosquitto_publish(conf.mosq, NULL, topic, len, data, conf.mqtt.qos,
+	                  conf.mqtt.retain);
+}
+
+static void decode_pub_gauge(char *sid, uint32_t time, int32_t gauge,
+                             uint16_t frac, char *unit)
+{
+	int len;
+	char topic[FLXD_STR_MAX];
+	char data[FLXD_STR_MAX];
+
+	snprintf(topic, FLXD_STR_MAX, DECODE_TOPIC_GAUGE, sid);
+	if (frac == 0) {
+		len = snprintf(data, FLXD_STR_MAX, DECODE_GAUGE, time, gauge, unit);
+	} else {
+		len = snprintf(data, FLXD_STR_MAX, DECODE_GAUGE_FRAC, time,
+		               gauge, frac, unit);
+	}
+	mosquitto_publish(conf.mosq, NULL, topic, len, data, conf.mqtt.qos,
+	                  conf.mqtt.retain);
+}
+
+/* fractional to decimal */
+static uint16_t ftod(uint16_t frac)
+{
+	return (uint16_t)((frac * 125) >> 13);
+}
+
+static bool decode_ct_data(struct buffer_s *b, struct decode_s *d)
+{
+	int i, offset;
+	struct ct_data_s ct;
+
+	decode_memcpy(b, (unsigned char *)&ct);
+	offset = ct.port * DECODE_MAX_CT_PARAMS;
+	ct.time = ltobl(ct.time) - 1;
+	ct.millis = ltobs(ct.millis);
+	for (i = 0; i <= DECODE_CT_PARAM_Q4; i++) {
+		decode_pub_counter(conf.sid[offset + i],
+		                   ct.time,
+		                   ltobl(ct.counter_integ[i]),
+		                   ftod(ltobs(ct.counter_frac[i])),
+		                   decode_ct_counter_dim[i]);
+	}
+	for (i = 0; i < DECODE_MAX_CT_PARAMS; i++) {
+		/* TODO scaling from Wh/s to W */
+		decode_pub_gauge(conf.sid[offset + i],
+		                 ct.time,
+		                 ltobs(ct.gauge[i].integ),
+		                 ftod(ltobs(ct.gauge[i].frac)),
+		                 decode_ct_gauge_dim[i]);
+	}
+	return false;
 }
 
 static bool decode_voltage(struct buffer_s *b, struct decode_s *d)
@@ -286,6 +414,8 @@ static const decode_fun decode_handler[] = {
 	decode_time_stamp,
 	decode_void, /* time step */
 	decode_void, /* time slew */
+	decode_ct_data,
+	decode_void, /* TODO pulse data */
 	decode_void, /* TODO debug */
 	decode_voltage,
 	decode_current, /* FLX_TYPE_CURRENT1 */

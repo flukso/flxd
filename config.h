@@ -8,7 +8,7 @@
 #endif
 
 #define FLXD_STR_MAX		64
-#define FLXD_SID_MAX		12
+#define FLXD_SID_MAX		36
 #define FLXD_UCI_DEVICE		"system.@system[0].device"
 #define FLXD_UCI_SID_TPL	"flukso.%d.id"
 #define FLXD_ULOOP_TIMEOUT	1000 /* ms */
