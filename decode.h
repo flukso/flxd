@@ -46,6 +46,9 @@
 #define DECODE_COUNTER_FRAC "[%d, %u.%03u, \"%s\"]"
 #define DECODE_GAUGE "[%d, %d, \"%s\"]"
 #define DECODE_GAUGE_FRAC "[%d, %d.%03u, \"%s\"]"
+#define DECODE_11BIT_FRAC_MASK 0x000007FFUL
+#define DECODE_20BIT_INTEG_MASK 0x7FFFF800UL
+#define DECODE_SIGN_MASK 0x80000000UL
 
 #define ltobs(A) ((((uint16_t)(A) & 0xff00) >> 8) | \
 	              (((uint16_t)(A) & 0x00ff) << 8))
@@ -106,11 +109,6 @@ char *decode_ct_gauge_dim[] = {
 	""
 };
 
-struct ct_data_gauge_s {
-	uint16_t frac;
-	int16_t integ;
-};
-
 struct ct_data_s {
 	uint32_t time;
 	uint16_t millis;
@@ -118,7 +116,7 @@ struct ct_data_s {
 	uint8_t null; /* alignment */
 	uint32_t counter_integ[DECODE_CT_PARAM_Q4 + 1];
 	uint16_t counter_frac[DECODE_CT_PARAM_Q4 + 1];
-	struct ct_data_gauge_s gauge[DECODE_MAX_CT_PARAMS];
+	uint32_t gauge[DECODE_MAX_CT_PARAMS];
 };
 
 struct voltage_s {
@@ -251,15 +249,19 @@ static void decode_pub_gauge(char *sid, uint32_t time, int32_t gauge,
 	                  conf.mqtt.retain);
 }
 
-/* fractional to decimal */
-static uint16_t ftod(uint16_t frac)
+/* fractional to decimal conversion */
+static uint16_t ftod(uint16_t frac, uint8_t width)
 {
-	return (uint16_t)((frac * 125) >> 13);
+	return (uint16_t)((frac * 125) >> (width - 3));
 }
+#define DECODE_11BIT_FRAC_MASK  0x000007FFUL
+#define DECODE_20BIT_INTEG_MASK 0x7FFFF800UL
 
 static bool decode_ct_data(struct buffer_s *b, struct decode_s *d)
 {
 	int i, offset;
+	int32_t integer;
+	uint16_t decimal;
 	struct ct_data_s ct;
 
 	decode_memcpy(b, (unsigned char *)&ct);
@@ -270,15 +272,20 @@ static bool decode_ct_data(struct buffer_s *b, struct decode_s *d)
 		decode_pub_counter(conf.sid[offset + i],
 		                   ct.time,
 		                   ltobl(ct.counter_integ[i]),
-		                   ftod(ltobs(ct.counter_frac[i])),
+		                   ftod(ltobs(ct.counter_frac[i]), 16),
 		                   decode_ct_counter_dim[i]);
 	}
 	for (i = 0; i < DECODE_MAX_CT_PARAMS; i++) {
-		/* TODO scaling from Wh/s to W */
+		ct.gauge[i] = ltobl(ct.gauge[i]);
+		integer = (ct.gauge[i] & DECODE_20BIT_INTEG_MASK) >> 11;
+		if (ct.gauge[i] & DECODE_SIGN_MASK) {
+			integer *= -1;
+		}
+		decimal = ftod(ct.gauge[i] & DECODE_11BIT_FRAC_MASK, 11);
 		decode_pub_gauge(conf.sid[offset + i],
 		                 ct.time,
-		                 ltobs(ct.gauge[i].integ),
-		                 ftod(ltobs(ct.gauge[i].frac)),
+		                 integer,
+		                 decimal,
 		                 decode_ct_gauge_dim[i]);
 	}
 	return false;
