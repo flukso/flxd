@@ -83,10 +83,11 @@ enum decode_ct_params {
 	DECODE_CT_PARAM_PF,
 	DECODE_CT_PARAM_VTHD,
 	DECODE_CT_PARAM_ITHD,
+	DECODE_CT_PARAM_SHIFT,
 	DECODE_MAX_CT_PARAMS
 };
 
-char *decode_ct_counter_dim[] = {
+char *decode_ct_counter_dim[DECODE_CT_PARAM_Q4 + 1] = {
 	"Wh",
 	"Wh",
 	"VARh",
@@ -95,7 +96,7 @@ char *decode_ct_counter_dim[] = {
 	"VARh"
 };
 
-char *decode_ct_gauge_dim[] = {
+char *decode_ct_gauge_dim[DECODE_MAX_CT_PARAMS] = {
 	"W",
 	"W",
 	"VAR",
@@ -106,7 +107,8 @@ char *decode_ct_gauge_dim[] = {
 	"A",
 	"",
 	"",
-	""
+	"",
+	"°"
 };
 
 struct ct_data_s {
@@ -254,8 +256,6 @@ static uint16_t ftod(uint16_t frac, uint8_t width)
 {
 	return (uint16_t)((frac * 125) >> (width - 3));
 }
-#define DECODE_11BIT_FRAC_MASK  0x000007FFUL
-#define DECODE_20BIT_INTEG_MASK 0x7FFFF800UL
 
 static bool decode_ct_data(struct buffer_s *b, struct decode_s *d)
 {
@@ -277,10 +277,7 @@ static bool decode_ct_data(struct buffer_s *b, struct decode_s *d)
 	}
 	for (i = 0; i < DECODE_MAX_CT_PARAMS; i++) {
 		ct.gauge[i] = ltobl(ct.gauge[i]);
-		integer = (ct.gauge[i] & DECODE_20BIT_INTEG_MASK) >> 11;
-		if (ct.gauge[i] & DECODE_SIGN_MASK) {
-			integer *= -1;
-		}
+		integer = (int32_t)ct.gauge[i] >> 11; /* ASR */
 		decimal = ftod(ct.gauge[i] & DECODE_11BIT_FRAC_MASK, 11);
 		decode_pub_gauge(conf.sid[offset + i],
 		                 ct.time,
