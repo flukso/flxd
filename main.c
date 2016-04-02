@@ -31,9 +31,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <termios.h>
-#include <uci.h>
-#include <libubox/uloop.h>
-#include <libubus.h>
 #include <mosquitto.h>
 #include "config.h"
 #include "flx.h"
@@ -64,28 +61,6 @@ static bool configure_tty(int fd)
 	return true;
 }
 
-static bool load_uci_config(struct uci_context *ctx, char *param, char *value)
-{
-	struct uci_ptr ptr;
-	char str[FLXD_STR_MAX];
-
-	strncpy(str, param, FLXD_STR_MAX);
-	if (uci_lookup_ptr(ctx, &ptr, str, true) != UCI_OK) {
-		uci_perror(ctx, param);
-		return false;
-	}
-	if (!(ptr.flags & UCI_LOOKUP_COMPLETE)) {
-		ctx->err = UCI_ERR_NOTFOUND;
-		uci_perror(ctx, param);
-		return false;
-	}
-	strncpy(value, ptr.o->v.string, FLXD_STR_MAX);
-	if (conf.verbosity > 0) {
-		fprintf(stdout, "%s=%s\n", param, value);
-	}
-	return true;
-}
-
 static int usage(const char *progname)
 {
 	fprintf(stderr,
@@ -107,8 +82,10 @@ static void timer(struct uloop_timeout *t)
 static void sighup(struct ubus_context *ctx, struct ubus_event_handler *ev,
                    const char *type, struct blob_attr *msg)
 {
-	/* TODO reload dynamic config settings */
-	fprintf(stdout, "Received flukso.sighup ubus event.\n");
+	if (conf.verbosity > 0) {
+		fprintf(stdout, "Received flukso.sighup ubus event.\n");
+	}
+	config_load_all();
 }
 
 struct config conf = {
@@ -135,8 +112,7 @@ struct config conf = {
 
 int main(int argc, char **argv)
 {
-	int i, opt, rc = 0;
-	char param[FLXD_STR_MAX];
+	int opt, rc = 0;
 
 	while ((opt = getopt(argc, argv, "hv")) != -1) {
 		switch (opt) {
@@ -149,20 +125,14 @@ int main(int argc, char **argv)
 		}	
 	}
 
-	conf.uci_ctx = uci_alloc_context();
-	if (!conf.uci_ctx) {
+	if (!config_init()) {
 		rc = 1;
 		goto oom;
 	}
-	rc = 2;
-	if (!load_uci_config(conf.uci_ctx, FLXD_UCI_DEVICE, conf.device))
+	if (!config_load_all()) {
+		rc = 2;
 		goto finish;
-	for (i = 0; i < FLXD_SID_MAX; i++) {
-		snprintf(param, FLXD_STR_MAX, FLXD_UCI_SID_TPL, i + 1);
-		if (!load_uci_config(conf.uci_ctx, param, conf.sid[i]))
-			goto finish;
 	}
-	rc = 0;
 
 	conf.flx_ufd.fd = open(FLX_DEV, O_RDWR);
 	if (conf.flx_ufd.fd < 0) {

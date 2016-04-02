@@ -1,6 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <uci.h>
 #include <libubox/uloop.h>
 #include <libubus.h>
 #include <mosquitto.h>
@@ -10,6 +11,7 @@
 
 #define FLXD_STR_MAX		64
 #define FLXD_SID_MAX		36
+#define FLXD_UCI_EXTENDED	true
 #define FLXD_UCI_DEVICE		"system.@system[0].device"
 #define FLXD_UCI_SID_TPL	"flukso.%d.id"
 #define FLXD_ULOOP_TIMEOUT	1000 /* ms */
@@ -46,5 +48,8 @@ struct config {
 };
 
 extern struct config conf;
+
+bool config_init(void);
+bool config_load_all(void);
 
 #endif
