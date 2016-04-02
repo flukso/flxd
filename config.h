@@ -2,6 +2,7 @@
 #define CONFIG_H
 
 #include <libubox/uloop.h>
+#include <libubus.h>
 #include <mosquitto.h>
 #ifdef WITH_YKW
 #include <ykw.h>
@@ -12,6 +13,7 @@
 #define FLXD_UCI_DEVICE		"system.@system[0].device"
 #define FLXD_UCI_SID_TPL	"flukso.%d.id"
 #define FLXD_ULOOP_TIMEOUT	1000 /* ms */
+#define FLXD_UBUS_EV_SIGHUP	"flukso.sighup"
 
 #define MQTT_ID_TPL		"flxd-p%d"
 #define MQTT_ID_LEN		16
@@ -34,6 +36,8 @@ struct config {
 	struct uci_context *uci_ctx;
 	struct uloop_fd flx_ufd;
 	struct uloop_timeout timeout;
+	struct ubus_context *ubus_ctx;
+	struct ubus_event_handler ubus_ev_sighup;
 	struct mqtt mqtt;
 	struct mosquitto *mosq;
 #ifdef WITH_YKW

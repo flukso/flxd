@@ -33,6 +33,7 @@
 #include <termios.h>
 #include <uci.h>
 #include <libubox/uloop.h>
+#include <libubus.h>
 #include <mosquitto.h>
 #include "config.h"
 #include "flx.h"
@@ -43,10 +44,12 @@ static bool configure_tty(int fd)
 {
 	struct termios term;
 
-	if (tcgetattr(fd, &term) == -1)
+	if (tcgetattr(fd, &term) == -1) {
 		return false;
-	if (cfsetospeed(&term, B921600) == -1)
+	}
+	if (cfsetospeed(&term, B921600) == -1) {
 		return false;
+	}
 	/* configure tty in raw mode */
 	term.c_iflag &= ~(BRKINT | ICRNL | IGNBRK | IGNCR | INLCR | INPCK |
 	                  ISTRIP | IXOFF | IXON | PARMRK);
@@ -55,8 +58,9 @@ static bool configure_tty(int fd)
 	term.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
 	term.c_cc[VMIN] = 1;
 	term.c_cc[VTIME] = 0;
-	if (tcsetattr(fd, TCSAFLUSH, &term) == -1)
+	if (tcsetattr(fd, TCSAFLUSH, &term) == -1) {
 		return false;
+	}
 	return true;
 }
 
@@ -77,7 +81,7 @@ static bool load_uci_config(struct uci_context *ctx, char *param, char *value)
 	}
 	strncpy(value, ptr.o->v.string, FLXD_STR_MAX);
 	if (conf.verbosity > 0) {
-		printf("%s=%s\n", param, value);
+		fprintf(stdout, "%s=%s\n", param, value);
 	}
 	return true;
 }
@@ -100,6 +104,13 @@ static void timer(struct uloop_timeout *t)
 	uloop_timeout_set(t, FLXD_ULOOP_TIMEOUT);
 }
 
+static void sighup(struct ubus_context *ctx, struct ubus_event_handler *ev,
+                   const char *type, struct blob_attr *msg)
+{
+	/* TODO reload dynamic config settings */
+	fprintf(stdout, "Received flukso.sighup ubus event.\n");
+}
+
 struct config conf = {
 	.me = "flxd",
 	.verbosity = 0,
@@ -108,6 +119,9 @@ struct config conf = {
 	},
 	.timeout = {
 		.cb = timer
+	},
+	.ubus_ev_sighup = {
+		.cb = sighup
 	},
 	.mqtt = {
 		.host = "localhost",
@@ -140,7 +154,6 @@ int main(int argc, char **argv)
 		rc = 1;
 		goto oom;
 	}
-
 	rc = 2;
 	if (!load_uci_config(conf.uci_ctx, FLXD_UCI_DEVICE, conf.device))
 		goto finish;
@@ -151,24 +164,44 @@ int main(int argc, char **argv)
 	}
 	rc = 0;
 
+	conf.flx_ufd.fd = open(FLX_DEV, O_RDWR);
+	if (conf.flx_ufd.fd < 0) {
+		perror(FLX_DEV);
+		rc = 3;
+		goto finish;
+	}
+	if (!configure_tty(conf.flx_ufd.fd)) {
+		fprintf(stderr, "%s: Failed to configure tty params\n", FLX_DEV);
+		rc = 4;
+		goto finish;
+	}
+
+	conf.ubus_ctx = ubus_connect(NULL);
+	if (!conf.ubus_ctx) {
+		fprintf(stderr, "Failed to connect to ubus\n");
+		rc = 5;
+		goto finish;
+	}
+
 #ifdef WITH_YKW
 	conf.ykw = ykw_new(YKW_DEFAULT_THETA);
 	if (conf.ykw == NULL) {
-		rc = 3;
+		rc = 6;
 		goto oom;
 	}
 #endif
+
 	mosquitto_lib_init();
 	snprintf(conf.mqtt.id, MQTT_ID_LEN, MQTT_ID_TPL, getpid());
 	conf.mosq = mosquitto_new(conf.mqtt.id, conf.mqtt.clean_session, &conf);
 	if (!conf.mosq) {
 		switch (errno) {
 		case ENOMEM:
-			rc = 4;
+			rc = 7;
 			goto oom;
 		case EINVAL:
 			fprintf(stderr, "mosq_new: Invalid id and/or clean_session.\n");
-			rc = 5;
+			rc = 8;
 			goto finish;
 		}
 	}
@@ -192,23 +225,14 @@ int main(int argc, char **argv)
 		goto finish;
 	}
 
-	conf.flx_ufd.fd = open(FLX_DEV, O_RDWR);
-	if (conf.flx_ufd.fd < 0) {
-		perror(FLX_DEV);
-		rc = 6;
-		goto finish;
-	}
-	if (!configure_tty(conf.flx_ufd.fd)) {
-		fprintf(stderr, "%s: Failed to configure tty params", FLX_DEV);
-		rc = 7;
-		goto finish;
-	}
 	uloop_init();
 	uloop_fd_add(&conf.flx_ufd, ULOOP_READ);
 	uloop_timeout_set(&conf.timeout, FLXD_ULOOP_TIMEOUT);
+	ubus_add_uloop(conf.ubus_ctx);
+	ubus_register_event_handler(conf.ubus_ctx, &conf.ubus_ev_sighup,
+	                            FLXD_UBUS_EV_SIGHUP);
 	uloop_run();
 	uloop_done();
-	close(conf.flx_ufd.fd);
 	goto finish;
 
 oom:
@@ -219,6 +243,8 @@ finish:
 	mosquitto_destroy(conf.mosq);
 	mosquitto_lib_cleanup();
 	ykw_free(conf.ykw);
+	ubus_free(conf.ubus_ctx);
+	close(conf.flx_ufd.fd);
 	uci_free_context(conf.uci_ctx);
 	return rc;
 }
