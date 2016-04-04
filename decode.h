@@ -50,13 +50,6 @@
 #define DECODE_20BIT_INTEG_MASK 0x7FFFF800UL
 #define DECODE_SIGN_MASK 0x80000000UL
 
-#define ltobs(A) ((((uint16_t)(A) & 0xff00) >> 8) | \
-	              (((uint16_t)(A) & 0x00ff) << 8))
-#define ltobl(A) ((((uint32_t)(A) & 0xff000000) >> 24) | \
-	              (((uint32_t)(A) & 0x00ff0000) >> 8)  | \
-	              (((uint32_t)(A) & 0x0000ff00) << 8)  | \
-	              (((uint32_t)(A) & 0x000000ff) << 24))
-
 enum decode_dest {
 	DECODE_DEST_DAEMON,
 	DECODE_DEST_FLX,
