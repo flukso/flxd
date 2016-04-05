@@ -40,13 +40,12 @@ struct mqtt {
 };
 
 struct port {
-	uint32_t constant;
+	uint16_t constant;
 	uint16_t fraction;
 	uint8_t current;
 	uint8_t shift;
 	uint8_t enable;
-	uint8_t padding1;
-	uint16_t padding2;
+	uint8_t padding;
 };
 
 struct config {

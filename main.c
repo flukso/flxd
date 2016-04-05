@@ -125,23 +125,23 @@ int main(int argc, char **argv)
 		}	
 	}
 
-	if (!config_init()) {
-		rc = 1;
-		goto oom;
-	}
-	if (!config_load_all()) {
-		rc = 2;
-		goto finish;
-	}
-
 	conf.flx_ufd.fd = open(FLX_DEV, O_RDWR);
 	if (conf.flx_ufd.fd < 0) {
 		perror(FLX_DEV);
-		rc = 3;
+		rc = 1;
 		goto finish;
 	}
 	if (!configure_tty(conf.flx_ufd.fd)) {
 		fprintf(stderr, "%s: Failed to configure tty params\n", FLX_DEV);
+		rc = 2;
+		goto finish;
+	}
+
+	if (!config_init()) {
+		rc = 3;
+		goto oom;
+	}
+	if (!config_load_all()) {
 		rc = 4;
 		goto finish;
 	}

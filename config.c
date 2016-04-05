@@ -23,6 +23,7 @@
  */
 
 #include "config.h"
+#include "flx.h"
 
 const char* flxd_uci_port_tpl[] = {
 	"flx.%d.constant",
@@ -99,10 +100,13 @@ static void config_load_port(int port)
 		snprintf(key, FLXD_STR_MAX, flxd_uci_port_tpl[i], port + 1);
 		switch (i) {
 		case 0:
-			conf.port[port].constant = ltobl(config_load_uint(key, 0));
+			/* do not call ltobs macro on a function */
+			conf.port[port].constant = (uint16_t)config_load_uint(key, 0);
+			conf.port[port].constant = ltobs(conf.port[port].constant);
 			break;
 		case 1:
-			conf.port[port].fraction = ltobs((uint16_t)config_load_uint(key, 0));
+			conf.port[port].fraction = (uint16_t)config_load_uint(key, 0);
+			conf.port[port].fraction = ltobs(conf.port[port].fraction);
 			break;
 		case 2:
 			conf.port[port].current = config_current_to_index(
@@ -116,6 +120,12 @@ static void config_load_port(int port)
 			break;
 		}
 	}
+}
+
+static void config_push_port(void)
+{
+	flx_tx(FLX_TYPE_PORT_CONFIG, (unsigned char *)&conf.port,
+	       sizeof(struct port) * FLXD_MAX_PORTS);
 }
 
 bool config_load_all(void)
@@ -133,6 +143,7 @@ bool config_load_all(void)
 	for (i = 0; i < FLXD_MAX_PORTS; i++) {
 		config_load_port(i);
 	}
+	config_push_port();
 	return true;
 }
 
