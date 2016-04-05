@@ -10,7 +10,7 @@
 #endif
 
 #define FLXD_MAX_PORTS			7
-#define FLXD_MAX_PORT_PARAMS	5
+#define FLXD_MAX_PORT_PARAMS	4
 #define FLXD_STR_MAX			64
 #define FLXD_SID_MAX			36
 #define FLXD_UCI_EXTENDED		true

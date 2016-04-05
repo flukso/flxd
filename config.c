@@ -22,12 +22,12 @@
  * SOFTWARE.
  */
 
+#include "math.h"
 #include "config.h"
 #include "flx.h"
 
 const char* flxd_uci_port_tpl[] = {
 	"flx.%d.constant",
-	"flx.%d.fraction",
 	"flx.%d.current",
 	"flx.%d.shift",
 	"flx.%d.enable"
@@ -73,6 +73,16 @@ static uint32_t config_load_uint(char *key, uint32_t def)
 	return strtoul(str_value, (char **)NULL, 10);
 }
 
+static double config_load_fp(char *key, double def)
+{
+	char str_value[FLXD_STR_MAX];
+
+	if (!config_load_str(key, str_value)) {
+		return def;
+	}
+	return atof(str_value);
+}
+
 static uint8_t config_current_to_index(uint32_t current)
 {
 	uint8_t i = 0;
@@ -97,28 +107,25 @@ static uint8_t config_current_to_index(uint32_t current)
 static void config_load_port(int port)
 {
 	int i;
+	double tmpint, tmpfrac;
 	char key[FLXD_STR_MAX];
 
 	for (i = 0; i < FLXD_MAX_PORT_PARAMS; i++) {
 		snprintf(key, FLXD_STR_MAX, flxd_uci_port_tpl[i], port + 1);
 		switch (i) {
 		case 0:
-			/* do not call ltobs macro on a function */
-			conf.port[port].constant = (uint16_t)config_load_uint(key, 0);
-			conf.port[port].constant = ltobs(conf.port[port].constant);
+			tmpfrac = modf(config_load_fp(key, 0.0), &tmpint);
+			conf.port[port].constant = ltobs((uint16_t)tmpint);
+			conf.port[port].fraction = ltobs((uint16_t)(tmpfrac * 1000 + 0.5));
 			break;
 		case 1:
-			conf.port[port].fraction = (uint16_t)config_load_uint(key, 0);
-			conf.port[port].fraction = ltobs(conf.port[port].fraction);
-			break;
-		case 2:
 			conf.port[port].current = config_current_to_index(
 			    config_load_uint(key, 0));
 			break;
-		case 3:
+		case 2:
 			conf.port[port].shift = (uint8_t)config_load_uint(key, 0);
 			break;
-		case 4:
+		case 3:
 			conf.port[port].enable = (uint8_t)config_load_uint(key, 0);
 			break;
 		}
