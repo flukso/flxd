@@ -16,8 +16,11 @@
 #define FLXD_UCI_EXTENDED		true
 #define FLXD_UCI_DEVICE			"system.@system[0].device"
 #define FLXD_UCI_SID_TPL		"flukso.%d.id"
+#define FLXD_UCI_PHASE			"flx.main.phase"
+#define FLXD_UCI_LED_MODE		"flx.main.led_mode"
 #define FLXD_ULOOP_TIMEOUT		1000 /* ms */
 #define FLXD_UBUS_EV_SIGHUP		"flukso.sighup"
+#define FLXD_LED_MODE_DEFAULT	255
 
 #define MQTT_ID_TPL				"flxd-p%d"
 #define MQTT_ID_LEN				16
@@ -28,6 +31,12 @@
 	              (((uint32_t)(A) & 0x00ff0000) >> 8)  | \
 	              (((uint32_t)(A) & 0x0000ff00) << 8)  | \
 	              (((uint32_t)(A) & 0x000000ff) << 24))
+
+enum {
+	CONFIG_1PHASE,
+	CONFIG_3PHASE_PLUS_N,
+	CONFIG_3PHASE_MINUS_N
+};
 
 struct mqtt {
 	char *host;
@@ -48,6 +57,11 @@ struct port {
 	uint8_t padding;
 };
 
+struct main {
+	uint8_t phase;
+	uint8_t led;
+};
+
 struct config {
 	int verbosity;
 	char *me;
@@ -61,6 +75,7 @@ struct config {
 	struct mqtt mqtt;
 	struct mosquitto *mosq;
 	struct port port[FLXD_MAX_PORTS];
+	struct main main;
 #ifdef WITH_YKW
 	struct ykw_ctx *ykw;
 #endif
@@ -70,6 +85,6 @@ extern struct config conf;
 
 bool config_init(void);
 bool config_load_all(void);
-void config_push_port(void);
+void config_push(void);
 
 #endif

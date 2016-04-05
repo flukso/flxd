@@ -132,10 +132,31 @@ static void config_load_port(int port)
 	}
 }
 
-void config_push_port(void)
+static uint8_t config_phase_to_index(char *phase)
+{
+	if (strcmp("3p+n", phase) == 0) {
+		return CONFIG_3PHASE_PLUS_N;
+	} else if (strcmp("3p-n", phase) == 0) {
+		return CONFIG_3PHASE_MINUS_N;
+	} else {
+		return CONFIG_1PHASE;
+	}
+}
+
+static void config_load_main(void)
+{
+	char str_value[FLXD_STR_MAX];
+
+	conf.main.phase = config_load_str(FLXD_UCI_PHASE, str_value) ?
+		config_phase_to_index(str_value) : CONFIG_1PHASE;
+	conf.main.led = (uint8_t)config_load_uint(FLXD_UCI_LED_MODE,
+	                                          FLXD_LED_MODE_DEFAULT);
+}
+
+void config_push(void)
 {
 	flx_tx(FLX_TYPE_PORT_CONFIG, (unsigned char *)&conf.port,
-	       sizeof(struct port) * FLXD_MAX_PORTS);
+	       sizeof(struct port) * FLXD_MAX_PORTS + sizeof(struct main));
 }
 
 bool config_load_all(void)
@@ -153,7 +174,8 @@ bool config_load_all(void)
 	for (i = 0; i < FLXD_MAX_PORTS; i++) {
 		config_load_port(i);
 	}
-	config_push_port();
+	config_load_main();
+	config_push();
 	return true;
 }
 

@@ -148,7 +148,7 @@ static int decode_memcpy(struct buffer_s *b, unsigned char *sink)
 static bool decode_ping(struct buffer_s *b, struct decode_s *d)
 {
 	/* we only get pinged when no port config is present */
-	config_push_port();
+	config_push();
 	return false;
 }
 
