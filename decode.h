@@ -408,6 +408,7 @@ static bool decode_current(struct buffer_s *b, struct decode_s *d)
 static const decode_fun decode_handler[] = {
 	decode_void, /* TODO ping */
 	decode_pong,
+	decode_void, /* port config */
 	decode_time_stamp,
 	decode_void, /* time step */
 	decode_void, /* time slew */
