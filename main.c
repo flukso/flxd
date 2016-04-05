@@ -76,7 +76,7 @@ static void timer(struct uloop_timeout *t)
 	static unsigned int counter = 0;
 
 	flx_tx(FLX_TYPE_PING, (unsigned char *)&counter, sizeof(counter));
-	uloop_timeout_set(t, FLXD_ULOOP_TIMEOUT);
+	uloop_timeout_set(t, CONFIG_ULOOP_TIMEOUT);
 }
 
 static void sighup(struct ubus_context *ctx, struct ubus_event_handler *ev,
@@ -199,10 +199,10 @@ int main(int argc, char **argv)
 
 	uloop_init();
 	uloop_fd_add(&conf.flx_ufd, ULOOP_READ);
-	uloop_timeout_set(&conf.timeout, FLXD_ULOOP_TIMEOUT);
+	uloop_timeout_set(&conf.timeout, CONFIG_ULOOP_TIMEOUT);
 	ubus_add_uloop(conf.ubus_ctx);
 	ubus_register_event_handler(conf.ubus_ctx, &conf.ubus_ev_sighup,
-	                            FLXD_UBUS_EV_SIGHUP);
+	                            CONFIG_UBUS_EV_SIGHUP);
 	uloop_run();
 	uloop_done();
 	goto finish;

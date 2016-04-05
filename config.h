@@ -9,18 +9,18 @@
 #include <ykw.h>
 #endif
 
-#define FLXD_MAX_PORTS			7
-#define FLXD_MAX_PORT_PARAMS	4
-#define FLXD_STR_MAX			64
-#define FLXD_SID_MAX			36
-#define FLXD_UCI_EXTENDED		true
-#define FLXD_UCI_DEVICE			"system.@system[0].device"
-#define FLXD_UCI_SID_TPL		"flukso.%d.id"
-#define FLXD_UCI_PHASE			"flx.main.phase"
-#define FLXD_UCI_LED_MODE		"flx.main.led_mode"
-#define FLXD_ULOOP_TIMEOUT		1000 /* ms */
-#define FLXD_UBUS_EV_SIGHUP		"flukso.sighup"
-#define FLXD_LED_MODE_DEFAULT	255
+#define CONFIG_MAX_PORTS		7
+#define CONFIG_MAX_PORT_PARAMS	4
+#define CONFIG_STR_MAX			64
+#define CONFIG_SID_MAX			36
+#define CONFIG_UCI_EXTENDED		true
+#define CONFIG_UCI_DEVICE		"system.@system[0].device"
+#define CONFIG_UCI_SID_TPL		"flukso.%d.id"
+#define CONFIG_UCI_PHASE		"flx.main.phase"
+#define CONFIG_UCI_LED_MODE		"flx.main.led_mode"
+#define CONFIG_ULOOP_TIMEOUT	1000 /* ms */
+#define CONFIG_UBUS_EV_SIGHUP	"flukso.sighup"
+#define CONFIG_LED_MODE_DEFAULT	255
 
 #define MQTT_ID_TPL				"flxd-p%d"
 #define MQTT_ID_LEN				16
@@ -65,8 +65,8 @@ struct main {
 struct config {
 	int verbosity;
 	char *me;
-	char device[FLXD_STR_MAX];
-	char sid[FLXD_SID_MAX][FLXD_STR_MAX];
+	char device[CONFIG_STR_MAX];
+	char sid[CONFIG_SID_MAX][CONFIG_STR_MAX];
 	struct uci_context *uci_ctx;
 	struct uloop_fd flx_ufd;
 	struct uloop_timeout timeout;
@@ -74,7 +74,7 @@ struct config {
 	struct ubus_event_handler ubus_ev_sighup;
 	struct mqtt mqtt;
 	struct mosquitto *mosq;
-	struct port port[FLXD_MAX_PORTS];
+	struct port port[CONFIG_MAX_PORTS];
 	struct main main;
 #ifdef WITH_YKW
 	struct ykw_ctx *ykw;

@@ -180,7 +180,7 @@ static bool time_threshold(struct timeval *t)
 
 static bool decode_time_stamp(struct buffer_s *b, struct decode_s *d)
 {
-	char topic[FLXD_STR_MAX];
+	char topic[CONFIG_STR_MAX];
 	time_t t = 0;
 	struct timeval t_flm, t_flx = {0, 0};
 	char* flm_update = "false";
@@ -209,7 +209,7 @@ static bool decode_time_stamp(struct buffer_s *b, struct decode_s *d)
 	    (int)t_flx.tv_sec,
 	    (int)t_flx.tv_usec,
 	    flx_update);
-	snprintf(topic, FLXD_STR_MAX, DECODE_TOPIC_TIME, conf.device);
+	snprintf(topic, CONFIG_STR_MAX, DECODE_TOPIC_TIME, conf.device);
 	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
 	                  conf.mqtt.retain);
 	return true;
@@ -219,14 +219,14 @@ static void decode_pub_counter(char *sid, uint32_t time, uint32_t counter,
                                uint16_t frac, char *unit)
 {
 	int len;
-	char topic[FLXD_STR_MAX];
-	char data[FLXD_STR_MAX];
+	char topic[CONFIG_STR_MAX];
+	char data[CONFIG_STR_MAX];
 
-	snprintf(topic, FLXD_STR_MAX, DECODE_TOPIC_COUNTER, sid);
+	snprintf(topic, CONFIG_STR_MAX, DECODE_TOPIC_COUNTER, sid);
 	if (frac == 0) {
-		len = snprintf(data, FLXD_STR_MAX, DECODE_COUNTER, time, counter, unit);
+		len = snprintf(data, CONFIG_STR_MAX, DECODE_COUNTER, time, counter, unit);
 	} else {
-		len = snprintf(data, FLXD_STR_MAX, DECODE_COUNTER_FRAC, time,
+		len = snprintf(data, CONFIG_STR_MAX, DECODE_COUNTER_FRAC, time,
 		               counter, frac, unit);
 	}
 	mosquitto_publish(conf.mosq, NULL, topic, len, data, conf.mqtt.qos,
@@ -237,14 +237,14 @@ static void decode_pub_gauge(char *sid, uint32_t time, int32_t gauge,
                              uint16_t frac, char *unit)
 {
 	int len;
-	char topic[FLXD_STR_MAX];
-	char data[FLXD_STR_MAX];
+	char topic[CONFIG_STR_MAX];
+	char data[CONFIG_STR_MAX];
 
-	snprintf(topic, FLXD_STR_MAX, DECODE_TOPIC_GAUGE, sid);
+	snprintf(topic, CONFIG_STR_MAX, DECODE_TOPIC_GAUGE, sid);
 	if (frac == 0) {
-		len = snprintf(data, FLXD_STR_MAX, DECODE_GAUGE, time, gauge, unit);
+		len = snprintf(data, CONFIG_STR_MAX, DECODE_GAUGE, time, gauge, unit);
 	} else {
-		len = snprintf(data, FLXD_STR_MAX, DECODE_GAUGE_FRAC, time,
+		len = snprintf(data, CONFIG_STR_MAX, DECODE_GAUGE_FRAC, time,
 		               gauge, frac, unit);
 	}
 	mosquitto_publish(conf.mosq, NULL, topic, len, data, conf.mqtt.qos,
@@ -291,7 +291,7 @@ static bool decode_ct_data(struct buffer_s *b, struct decode_s *d)
 static bool decode_voltage(struct buffer_s *b, struct decode_s *d)
 {
 	int i;
-	char topic[FLXD_STR_MAX];
+	char topic[CONFIG_STR_MAX];
 	struct voltage_s v;
 
 	d->dest = DECODE_DEST_MQTT;
@@ -339,7 +339,7 @@ static bool decode_voltage(struct buffer_s *b, struct decode_s *d)
 	    v.adc[29],
 	    v.adc[30],
 	    v.adc[31]);
-	snprintf(topic, FLXD_STR_MAX, DECODE_TOPIC_VOLTAGE, conf.device,
+	snprintf(topic, CONFIG_STR_MAX, DECODE_TOPIC_VOLTAGE, conf.device,
 	         d->type - FLX_TYPE_VOLTAGE1 + 1);
 	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
 	                  conf.mqtt.retain);
@@ -352,7 +352,7 @@ static bool decode_voltage(struct buffer_s *b, struct decode_s *d)
 static bool decode_current(struct buffer_s *b, struct decode_s *d)
 {
 	int i;
-	char topic[FLXD_STR_MAX];
+	char topic[CONFIG_STR_MAX];
 	struct current_s c;
 
 	d->dest = DECODE_DEST_MQTT;
@@ -400,7 +400,7 @@ static bool decode_current(struct buffer_s *b, struct decode_s *d)
 	    c.adc[29],
 	    c.adc[30],
 	    c.adc[31]);
-	snprintf(topic, FLXD_STR_MAX, DECODE_TOPIC_CURRENT, conf.device,
+	snprintf(topic, CONFIG_STR_MAX, DECODE_TOPIC_CURRENT, conf.device,
 	         d->type - FLX_TYPE_CURRENT1 + 1);
 	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
 	                  conf.mqtt.retain);
