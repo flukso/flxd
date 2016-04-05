@@ -35,6 +35,9 @@ const char* flxd_uci_port_tpl[] = {
 
 bool config_init(void)
 {
+	if (conf.uci_ctx != NULL) {
+		uci_free_context(conf.uci_ctx);
+	}
 	return (conf.uci_ctx = uci_alloc_context()) ? true : false;
 }
 

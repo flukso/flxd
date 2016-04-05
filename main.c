@@ -85,6 +85,7 @@ static void sighup(struct ubus_context *ctx, struct ubus_event_handler *ev,
 	if (conf.verbosity > 0) {
 		fprintf(stdout, "Received flukso.sighup ubus event.\n");
 	}
+	config_init();
 	config_load_all();
 }
 
@@ -97,6 +98,7 @@ struct config conf = {
 	.timeout = {
 		.cb = timer
 	},
+	.uci_ctx = NULL,
 	.ubus_ev_sighup = {
 		.cb = sighup
 	},
