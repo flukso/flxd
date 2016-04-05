@@ -70,5 +70,6 @@ extern struct config conf;
 
 bool config_init(void);
 bool config_load_all(void);
+void config_push_port(void);
 
 #endif

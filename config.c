@@ -122,7 +122,7 @@ static void config_load_port(int port)
 	}
 }
 
-static void config_push_port(void)
+void config_push_port(void)
 {
 	flx_tx(FLX_TYPE_PORT_CONFIG, (unsigned char *)&conf.port,
 	       sizeof(struct port) * FLXD_MAX_PORTS);

@@ -145,6 +145,13 @@ static int decode_memcpy(struct buffer_s *b, unsigned char *sink)
 	return len;
 }
 
+static bool decode_ping(struct buffer_s *b, struct decode_s *d)
+{
+	/* we only get pinged when no port config is present */
+	config_push_port();
+	return false;
+}
+
 static bool decode_pong(struct buffer_s *b, struct decode_s *d)
 {
 	d->dest = DECODE_DEST_DAEMON;
@@ -406,7 +413,7 @@ static bool decode_current(struct buffer_s *b, struct decode_s *d)
 
 
 static const decode_fun decode_handler[] = {
-	decode_void, /* TODO ping */
+	decode_ping,
 	decode_pong,
 	decode_void, /* port config */
 	decode_time_stamp,
