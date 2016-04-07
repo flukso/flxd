@@ -123,6 +123,7 @@ struct voltage_s {
 struct current_s {
 	unsigned int time;
 	unsigned short millis;
+	unsigned short index;
 	short adc[DECODE_NUM_SAMPLES];
 };
 
@@ -296,7 +297,7 @@ static bool decode_voltage(struct buffer_s *b, struct decode_s *d)
 	struct voltage_s v;
 
 	d->dest = DECODE_DEST_MQTT;
-	d->type = FLX_TYPE_VOLTAGE1;
+	d->type = FLX_TYPE_VOLTAGE;
 	decode_memcpy(b, (unsigned char *)&v);
 	v.time = ltobl(v.time);
 	v.millis = ltobs(v.millis);
@@ -340,8 +341,7 @@ static bool decode_voltage(struct buffer_s *b, struct decode_s *d)
 	    v.adc[29],
 	    v.adc[30],
 	    v.adc[31]);
-	snprintf(topic, CONFIG_STR_MAX, DECODE_TOPIC_VOLTAGE, conf.device,
-	         d->type - FLX_TYPE_VOLTAGE1 + 1);
+	snprintf(topic, CONFIG_STR_MAX, DECODE_TOPIC_VOLTAGE, conf.device, 1);
 	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
 	                  conf.mqtt.retain);
 #ifdef WITH_YKW
@@ -357,10 +357,11 @@ static bool decode_current(struct buffer_s *b, struct decode_s *d)
 	struct current_s c;
 
 	d->dest = DECODE_DEST_MQTT;
-	d->type = b->data[b->tail]; /* FLX_TYPE_CURRENT[1|2|3] */
+	d->type = FLX_TYPE_CURRENT;
 	decode_memcpy(b, (unsigned char *)&c);
 	c.time = ltobl(c.time);
 	c.millis = ltobs(c.millis);
+	c.index = ltobs(c.index);
 	for (i = 0; i < DECODE_NUM_SAMPLES; i++) {
 		c.adc[i] = ltobs(c.adc[i]);
 	}
@@ -402,12 +403,12 @@ static bool decode_current(struct buffer_s *b, struct decode_s *d)
 	    c.adc[30],
 	    c.adc[31]);
 	snprintf(topic, CONFIG_STR_MAX, DECODE_TOPIC_CURRENT, conf.device,
-	         d->type - FLX_TYPE_CURRENT1 + 1);
+	         c.index + 1);
 	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
 	                  conf.mqtt.retain);
 #ifdef WITH_YKW
-	ykw_process_current(conf.ykw, c.time, c.millis,
-	    d->type - FLX_TYPE_CURRENT1, c.adc, DECODE_NUM_SAMPLES);
+	ykw_process_current(conf.ykw, c.time, c.millis, c.index, c.adc,
+	                    DECODE_NUM_SAMPLES);
 #endif
 	return true;
 }
