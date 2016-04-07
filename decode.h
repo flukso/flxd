@@ -76,7 +76,7 @@ enum decode_ct_params {
 	DECODE_CT_PARAM_PF,
 	DECODE_CT_PARAM_VTHD,
 	DECODE_CT_PARAM_ITHD,
-	DECODE_CT_PARAM_SHIFT,
+	DECODE_CT_PARAM_ALPHA,
 	DECODE_MAX_CT_PARAMS
 };
 
@@ -111,7 +111,7 @@ struct ct_data_s {
 	uint8_t null; /* alignment */
 	uint32_t counter_integ[DECODE_CT_PARAM_Q4 + 1];
 	uint16_t counter_frac[DECODE_CT_PARAM_Q4 + 1];
-	uint32_t gauge[DECODE_MAX_CT_PARAMS];
+	int32_t gauge[DECODE_MAX_CT_PARAMS];
 };
 
 struct voltage_s {
@@ -277,7 +277,7 @@ static bool decode_ct_data(struct buffer_s *b, struct decode_s *d)
 	}
 	for (i = 0; i < DECODE_MAX_CT_PARAMS; i++) {
 		ct.gauge[i] = ltobl(ct.gauge[i]);
-		integer = (int32_t)ct.gauge[i] >> 11; /* ASR */
+		integer = ct.gauge[i] >> 11; /* ASR */
 		decimal = ftod(ct.gauge[i] & DECODE_11BIT_FRAC_MASK, 11);
 		decode_pub_gauge(conf.sid[offset + i],
 		                 ct.time,
@@ -285,6 +285,7 @@ static bool decode_ct_data(struct buffer_s *b, struct decode_s *d)
 		                 decimal,
 		                 decode_ct_gauge_dim[i]);
 	}
+	shift_push_alpha(ct.port, ct.gauge[DECODE_CT_PARAM_ALPHA]);
 	return false;
 }
 

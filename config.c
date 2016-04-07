@@ -26,7 +26,7 @@
 #include "config.h"
 #include "flx.h"
 
-const char* flxd_uci_port_tpl[] = {
+const char* config_uci_port_tpl[] = {
 	"flx.%d.constant",
 	"flx.%d.current",
 	"flx.%d.shift",
@@ -47,7 +47,7 @@ static bool config_load_str(char *key, char *value)
 	char str[CONFIG_STR_MAX];
 
 	strncpy(str, key, CONFIG_STR_MAX);
-	if (uci_lookup_ptr(conf.uci_ctx, &ptr, str, CONFIG_UCI_EXTENDED) != UCI_OK) {
+	if (uci_lookup_ptr(conf.uci_ctx, &ptr, str, true) != UCI_OK) {
 		uci_perror(conf.uci_ctx, key);
 		return false;
 	}
@@ -58,7 +58,7 @@ static bool config_load_str(char *key, char *value)
 	}
 	strncpy(value, ptr.o->v.string, CONFIG_STR_MAX);
 	if (conf.verbosity > 0) {
-		fprintf(stdout, "%s=%s\n", key, value);
+		fprintf(stdout, "[uci] %s=%s\n", key, value);
 	}
 	return true;
 }
@@ -111,7 +111,7 @@ static void config_load_port(int port)
 	char key[CONFIG_STR_MAX];
 
 	for (i = 0; i < CONFIG_MAX_PORT_PARAMS; i++) {
-		snprintf(key, CONFIG_STR_MAX, flxd_uci_port_tpl[i], port + 1);
+		snprintf(key, CONFIG_STR_MAX, config_uci_port_tpl[i], port + 1);
 		switch (i) {
 		case 0:
 			tmpfrac = modf(config_load_fp(key, 0.0), &tmpint);

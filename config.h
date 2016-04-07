@@ -9,21 +9,22 @@
 #include <ykw.h>
 #endif
 
-#define CONFIG_MAX_PORTS		7
-#define CONFIG_MAX_PORT_PARAMS	4
-#define CONFIG_STR_MAX			64
-#define CONFIG_SID_MAX			36
-#define CONFIG_UCI_EXTENDED		true
-#define CONFIG_UCI_DEVICE		"system.@system[0].device"
-#define CONFIG_UCI_SID_TPL		"flukso.%d.id"
-#define CONFIG_UCI_PHASE		"flx.main.phase"
-#define CONFIG_UCI_LED_MODE		"flx.main.led_mode"
-#define CONFIG_ULOOP_TIMEOUT	1000 /* ms */
-#define CONFIG_UBUS_EV_SIGHUP	"flukso.sighup"
-#define CONFIG_LED_MODE_DEFAULT	255
+#define CONFIG_MAX_PORTS			7
+#define CONFIG_MAX_ANALOG_PORTS		3
+#define CONFIG_MAX_PORT_PARAMS		4
+#define CONFIG_STR_MAX				64
+#define CONFIG_SID_MAX				36
+#define CONFIG_UCI_DEVICE			"system.@system[0].device"
+#define CONFIG_UCI_SID_TPL			"flukso.%d.id"
+#define CONFIG_UCI_PHASE			"flx.main.phase"
+#define CONFIG_UCI_LED_MODE			"flx.main.led_mode"
+#define CONFIG_ULOOP_TIMEOUT		1000 /* ms */
+#define CONFIG_UBUS_EV_SIGHUP		"flukso.sighup"
+#define CONFIG_UBUS_EV_SHIFT_CALC 	"flx.shift.calc"
+#define CONFIG_LED_MODE_DEFAULT		255
 
-#define MQTT_ID_TPL				"flxd-p%d"
-#define MQTT_ID_LEN				16
+#define MQTT_ID_TPL					"flxd-p%d"
+#define MQTT_ID_LEN					16
 
 #define ltobs(A) ((((uint16_t)(A) & 0xff00) >> 8) | \
 	              (((uint16_t)(A) & 0x00ff) << 8))
@@ -72,6 +73,7 @@ struct config {
 	struct uloop_timeout timeout;
 	struct ubus_context *ubus_ctx;
 	struct ubus_event_handler ubus_ev_sighup;
+	struct ubus_event_handler ubus_ev_shift_calc;
 	struct mqtt mqtt;
 	struct mosquitto *mosq;
 	struct port port[CONFIG_MAX_PORTS];

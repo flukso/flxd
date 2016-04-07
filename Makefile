@@ -2,7 +2,7 @@ INCDIR =
 LIBDIR =
 
 BIN = flxd
-OBJS = main.o flx.o config.o
+OBJS = main.o flx.o config.o shift.o
 LIBS = -lm -lubox -lubus -luci -lmosquitto
 CSTD = -std=gnu99
 WARN = -Wall -pedantic

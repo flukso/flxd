@@ -30,6 +30,7 @@
 #include <sys/time.h>
 #include <mosquitto.h>
 #include "config.h"
+#include "shift.h"
 #include "flx.h"
 #include "decode.h"
 #include "encode.h"
@@ -169,7 +170,7 @@ static void flx_pop(struct buffer_s *b)
 			if (flx_check_fletcher16(b)) {
 				flx_decode(b);
 			} else if (conf.verbosity > 0) {
-				fprintf(stdout, "[flx] fletcher16 checksum error");
+				fprintf(stdout, "[flx] fletcher16 checksum error\n");
 			}
 			b->state = FLX_BUFFER_STATE_SYNC1;
 			flx_buffer_advance_tail(b, packet_size);

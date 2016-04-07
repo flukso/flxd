@@ -34,6 +34,7 @@
 #include <mosquitto.h>
 #include "config.h"
 #include "flx.h"
+#include "shift.h"
 
 struct config conf;
 
@@ -79,14 +80,23 @@ static void timer(struct uloop_timeout *t)
 	uloop_timeout_set(t, CONFIG_ULOOP_TIMEOUT);
 }
 
-static void sighup(struct ubus_context *ctx, struct ubus_event_handler *ev,
+static void ub_sighup(struct ubus_context *ctx, struct ubus_event_handler *ev,
                    const char *type, struct blob_attr *msg)
 {
 	if (conf.verbosity > 0) {
-		fprintf(stdout, "Received flukso.sighup ubus event.\n");
+		fprintf(stdout, "[ubus] rx %s event\n", CONFIG_UBUS_EV_SIGHUP);
 	}
 	config_init();
 	config_load_all();
+}
+
+static void ub_shift_calc(struct ubus_context *ctx, struct ubus_event_handler *ev,
+                   const char *type, struct blob_attr *msg)
+{
+	if (conf.verbosity > 0) {
+		fprintf(stdout, "[ubus] rx %s event\n", CONFIG_UBUS_EV_SHIFT_CALC);
+	}
+	shift_calculate();
 }
 
 struct config conf = {
@@ -100,7 +110,10 @@ struct config conf = {
 	},
 	.uci_ctx = NULL,
 	.ubus_ev_sighup = {
-		.cb = sighup
+		.cb = ub_sighup
+	},
+	.ubus_ev_shift_calc = {
+		.cb = ub_shift_calc
 	},
 	.mqtt = {
 		.host = "localhost",
@@ -203,6 +216,8 @@ int main(int argc, char **argv)
 	ubus_add_uloop(conf.ubus_ctx);
 	ubus_register_event_handler(conf.ubus_ctx, &conf.ubus_ev_sighup,
 	                            CONFIG_UBUS_EV_SIGHUP);
+	ubus_register_event_handler(conf.ubus_ctx, &conf.ubus_ev_shift_calc,
+	                            CONFIG_UBUS_EV_SHIFT_CALC);
 	uloop_run();
 	uloop_done();
 	goto finish;
