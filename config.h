@@ -12,10 +12,10 @@
 #define CONFIG_MAX_PORTS			7
 #define CONFIG_MAX_ANALOG_PORTS		3
 #define CONFIG_MAX_PORT_PARAMS		4
+#define CONFIG_MAX_SENSOR_PARAMS	3
 #define CONFIG_STR_MAX				64
-#define CONFIG_SID_MAX				39
+#define CONFIG_MAX_SENSORS			39
 #define CONFIG_UCI_DEVICE			"system.@system[0].device"
-#define CONFIG_UCI_SID_TPL			"flukso.%d.id"
 #define CONFIG_UCI_PHASE			"flx.main.phase"
 #define CONFIG_UCI_LED_MODE			"flx.main.led_mode"
 #define CONFIG_ULOOP_TIMEOUT		1000 /* ms */
@@ -34,6 +34,13 @@
 	              (((uint32_t)(A) & 0x000000ff) << 24))
 
 enum {
+	CONFIG_SENSOR_TYPE_ELECTRICITY,
+	CONFIG_SENSOR_TYPE_GAS,
+	CONFIG_SENSOR_TYPE_WATER,
+	CONFIG_SENSOR_TYPE_OTHER
+};
+
+enum {
 	CONFIG_1PHASE,
 	CONFIG_3PHASE_PLUS_N,
 	CONFIG_3PHASE_MINUS_N
@@ -47,6 +54,12 @@ struct mqtt {
 	bool clean_session;
 	int qos;
 	int retain;
+};
+
+struct sensor {
+	char id[CONFIG_STR_MAX];
+	uint8_t type;
+	uint8_t enable;
 };
 
 struct port {
@@ -67,7 +80,9 @@ struct config {
 	int verbosity;
 	char *me;
 	char device[CONFIG_STR_MAX];
-	char sid[CONFIG_SID_MAX][CONFIG_STR_MAX];
+	struct sensor sensor[CONFIG_MAX_SENSORS];
+	struct port port[CONFIG_MAX_PORTS];
+	struct main main;
 	struct uci_context *uci_ctx;
 	struct uloop_fd flx_ufd;
 	struct uloop_timeout timeout;
@@ -76,8 +91,6 @@ struct config {
 	struct ubus_event_handler ubus_ev_shift_calc;
 	struct mqtt mqtt;
 	struct mosquitto *mosq;
-	struct port port[CONFIG_MAX_PORTS];
-	struct main main;
 #ifdef WITH_YKW
 	struct ykw_ctx *ykw;
 #endif

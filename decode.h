@@ -80,7 +80,7 @@ enum decode_ct_params {
 	DECODE_MAX_CT_PARAMS
 };
 
-char *decode_ct_counter_unit[DECODE_CT_PARAM_Q4 + 1] = {
+const char *decode_ct_counter_unit[DECODE_CT_PARAM_Q4 + 1] = {
 	"Wh",
 	"Wh",
 	"VARh",
@@ -89,7 +89,7 @@ char *decode_ct_counter_unit[DECODE_CT_PARAM_Q4 + 1] = {
 	"VARh"
 };
 
-char *decode_ct_gauge_unit[DECODE_MAX_CT_PARAMS] = {
+const char *decode_ct_gauge_unit[DECODE_MAX_CT_PARAMS] = {
 	"W",
 	"W",
 	"VAR",
@@ -102,6 +102,20 @@ char *decode_ct_gauge_unit[DECODE_MAX_CT_PARAMS] = {
 	"",
 	"",
 	"°"
+};
+
+const char *decode_pulse_counter_unit[] = {
+	"Wh",
+	"L",
+	"L",
+	""
+};
+
+const char *decode_pulse_gauge_unit[] = {
+	"W",
+	"L/day",
+	"L/day",
+	""
 };
 
 struct ct_data_s {
@@ -226,7 +240,7 @@ static bool decode_time_stamp(struct buffer_s *b, struct decode_s *d)
 }
 
 static void decode_pub_counter(char *sid, uint32_t time, uint32_t counter,
-                               uint16_t frac, char *unit)
+                               uint16_t frac, const char *unit)
 {
 	int len;
 	char topic[CONFIG_STR_MAX];
@@ -244,7 +258,7 @@ static void decode_pub_counter(char *sid, uint32_t time, uint32_t counter,
 }
 
 static void decode_pub_gauge(char *sid, uint32_t time, int32_t gauge,
-                             uint16_t frac, char *unit)
+                             uint16_t frac, const char *unit)
 {
 	int len;
 	char topic[CONFIG_STR_MAX];
@@ -279,7 +293,7 @@ static bool decode_ct_data(struct buffer_s *b, struct decode_s *d)
 	ct.time = ltobl(ct.time) - 1;
 	ct.millis = ltobs(ct.millis);
 	for (i = 0; i <= DECODE_CT_PARAM_Q4; i++) {
-		decode_pub_counter(conf.sid[offset + i],
+		decode_pub_counter(conf.sensor[offset + i].id,
 		                   ct.time,
 		                   ltobl(ct.counter_integ[i]),
 		                   ftod(ltobs(ct.counter_frac[i]), 16),
@@ -289,7 +303,7 @@ static bool decode_ct_data(struct buffer_s *b, struct decode_s *d)
 		ct.gauge[i] = ltobl(ct.gauge[i]);
 		integer = ct.gauge[i] >> 11; /* ASR */
 		decimal = ftod(ct.gauge[i] & DECODE_11BIT_FRAC_MASK, 11);
-		decode_pub_gauge(conf.sid[offset + i],
+		decode_pub_gauge(conf.sensor[offset + i].id,
 		                 ct.time,
 		                 integer,
 		                 decimal,
@@ -301,19 +315,19 @@ static bool decode_ct_data(struct buffer_s *b, struct decode_s *d)
 
 static bool decode_pulse_data(struct buffer_s *b, struct decode_s *d)
 {
-	int offset;
+	int offset, sensor;
 	struct pulse_data_s pulse;
 
 	decode_memcpy(b, (unsigned char*)&pulse);
 	offset = CONFIG_MAX_ANALOG_PORTS * DECODE_MAX_CT_PARAMS;
+	sensor = offset + pulse.port - CONFIG_MAX_ANALOG_PORTS;
 	pulse.time = ltobl(pulse.time);
 	pulse.millis = ltobs(pulse.millis);
-	decode_pub_counter(conf.sid[offset + pulse.port - CONFIG_MAX_ANALOG_PORTS],
+	decode_pub_counter(conf.sensor[sensor].id,
 	                   pulse.time,
 	                   ltobl(pulse.counter_integ),
 	                   ltobs(pulse.counter_millis),
-	/* TODO replace with correct unit */
-	                   "");
+	                   decode_pulse_counter_unit[conf.sensor[sensor].type]);
 	return false;
 }
 

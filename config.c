@@ -26,6 +26,12 @@
 #include "config.h"
 #include "flx.h"
 
+const char* config_uci_sensor_tpl[] = {
+	"flukso.%d.id",
+	"flukso.%d.type",
+	"flukso.%d.enable",
+};
+
 const char* config_uci_port_tpl[] = {
 	"flx.%d.constant",
 	"flx.%d.current",
@@ -81,6 +87,51 @@ static double config_load_fp(char *key, double def)
 		return def;
 	}
 	return atof(str_value);
+}
+
+static uint8_t config_type_to_index(char *type)
+{
+	if (strcmp("electricity", type) == 0) {
+		return CONFIG_SENSOR_TYPE_ELECTRICITY;
+	} else if (strcmp("gas", type) == 0) {
+		return CONFIG_SENSOR_TYPE_GAS;
+	} else if (strcmp("water", type) == 0) {
+		return CONFIG_SENSOR_TYPE_WATER;
+	} else {
+		return CONFIG_SENSOR_TYPE_OTHER;
+	}
+}
+
+static bool config_load_sensor(int sensor)
+{
+	int i;
+	char key[CONFIG_STR_MAX];
+	char str_value[CONFIG_STR_MAX];
+
+	for (i = 0; i < CONFIG_MAX_SENSOR_PARAMS; i++) {
+		snprintf(key, CONFIG_STR_MAX, config_uci_sensor_tpl[i], sensor + 1);
+		switch (i) {
+		case 0:
+			if (!config_load_str(key, conf.sensor[sensor].id)) {
+				return false;
+			}
+			break;
+		case 1:
+			/* we only require a type for pulse sensors */
+			if (sensor < CONFIG_MAX_SENSORS - 3) {
+				break;
+			}
+			if (!config_load_str(key, str_value)) {
+				return false;
+			}
+			conf.sensor[sensor].type = (uint8_t)config_type_to_index(str_value);
+			break;
+		case 2:
+			conf.sensor[sensor].enable = (uint8_t)config_load_uint(key, 0);
+			break;
+		}
+	}
+	return true;
 }
 
 static uint8_t config_current_to_index(uint32_t current)
@@ -162,14 +213,13 @@ void config_push(void)
 bool config_load_all(void)
 {
 	int i;
-	char key[CONFIG_STR_MAX];
 
 	if (!config_load_str(CONFIG_UCI_DEVICE, conf.device))
 		return false;
-	for (i = 0; i < CONFIG_SID_MAX; i++) {
-		snprintf(key, CONFIG_STR_MAX, CONFIG_UCI_SID_TPL, i + 1);
-		if (!config_load_str(key, conf.sid[i]))
+	for (i = 0; i < CONFIG_MAX_SENSORS; i++) {
+		if (!config_load_sensor(i)) {
 			return false;
+		}
 	}
 	for (i = 0; i < CONFIG_MAX_PORTS; i++) {
 		config_load_port(i);

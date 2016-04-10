@@ -230,7 +230,9 @@ finish:
 	mosquitto_destroy(conf.mosq);
 	mosquitto_lib_cleanup();
 	ykw_free(conf.ykw);
-	ubus_free(conf.ubus_ctx);
+	if (conf.ubus_ctx != NULL) {
+		ubus_free(conf.ubus_ctx);
+	}
 	close(conf.flx_ufd.fd);
 	uci_free_context(conf.uci_ctx);
 	return rc;
