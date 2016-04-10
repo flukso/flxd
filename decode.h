@@ -80,7 +80,7 @@ enum decode_ct_params {
 	DECODE_MAX_CT_PARAMS
 };
 
-char *decode_ct_counter_dim[DECODE_CT_PARAM_Q4 + 1] = {
+char *decode_ct_counter_unit[DECODE_CT_PARAM_Q4 + 1] = {
 	"Wh",
 	"Wh",
 	"VARh",
@@ -89,7 +89,7 @@ char *decode_ct_counter_dim[DECODE_CT_PARAM_Q4 + 1] = {
 	"VARh"
 };
 
-char *decode_ct_gauge_dim[DECODE_MAX_CT_PARAMS] = {
+char *decode_ct_gauge_unit[DECODE_MAX_CT_PARAMS] = {
 	"W",
 	"W",
 	"VAR",
@@ -108,10 +108,19 @@ struct ct_data_s {
 	uint32_t time;
 	uint16_t millis;
 	uint8_t port;
-	uint8_t null; /* alignment */
+	uint8_t padding;
 	uint32_t counter_integ[DECODE_CT_PARAM_Q4 + 1];
 	uint16_t counter_frac[DECODE_CT_PARAM_Q4 + 1];
 	int32_t gauge[DECODE_MAX_CT_PARAMS];
+};
+
+struct pulse_data_s {
+	uint32_t time;
+	uint16_t millis;
+	uint8_t port;
+	uint8_t padding;
+	uint32_t counter_integ;
+	uint16_t counter_millis;
 };
 
 struct voltage_s {
@@ -274,7 +283,7 @@ static bool decode_ct_data(struct buffer_s *b, struct decode_s *d)
 		                   ct.time,
 		                   ltobl(ct.counter_integ[i]),
 		                   ftod(ltobs(ct.counter_frac[i]), 16),
-		                   decode_ct_counter_dim[i]);
+		                   decode_ct_counter_unit[i]);
 	}
 	for (i = 0; i < DECODE_MAX_CT_PARAMS; i++) {
 		ct.gauge[i] = ltobl(ct.gauge[i]);
@@ -284,9 +293,27 @@ static bool decode_ct_data(struct buffer_s *b, struct decode_s *d)
 		                 ct.time,
 		                 integer,
 		                 decimal,
-		                 decode_ct_gauge_dim[i]);
+		                 decode_ct_gauge_unit[i]);
 	}
 	shift_push_alpha(ct.port, ct.gauge[DECODE_CT_PARAM_ALPHA]);
+	return false;
+}
+
+static bool decode_pulse_data(struct buffer_s *b, struct decode_s *d)
+{
+	int offset;
+	struct pulse_data_s pulse;
+
+	decode_memcpy(b, (unsigned char*)&pulse);
+	offset = CONFIG_MAX_ANALOG_PORTS * DECODE_MAX_CT_PARAMS;
+	pulse.time = ltobl(pulse.time);
+	pulse.millis = ltobs(pulse.millis);
+	decode_pub_counter(conf.sid[offset + pulse.port - CONFIG_MAX_ANALOG_PORTS],
+	                   pulse.time,
+	                   ltobl(pulse.counter_integ),
+	                   ltobs(pulse.counter_millis),
+	/* TODO replace with correct unit */
+	                   "");
 	return false;
 }
 
@@ -422,7 +449,7 @@ static const decode_fun decode_handler[] = {
 	decode_void, /* time step */
 	decode_void, /* time slew */
 	decode_ct_data,
-	decode_void, /* TODO pulse data */
+	decode_pulse_data,
 	decode_void, /* TODO debug */
 	decode_voltage,
 	decode_current, /* FLX_TYPE_CURRENT1 */

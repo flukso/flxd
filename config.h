@@ -13,7 +13,7 @@
 #define CONFIG_MAX_ANALOG_PORTS		3
 #define CONFIG_MAX_PORT_PARAMS		4
 #define CONFIG_STR_MAX				64
-#define CONFIG_SID_MAX				36
+#define CONFIG_SID_MAX				39
 #define CONFIG_UCI_DEVICE			"system.@system[0].device"
 #define CONFIG_UCI_SID_TPL			"flukso.%d.id"
 #define CONFIG_UCI_PHASE			"flx.main.phase"
