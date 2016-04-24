@@ -27,7 +27,7 @@
 
 #include <libubox/uloop.h>
 
-#define FLX_DEV "/dev/ttyS0"
+#define FLX_DEV "/dev/ttyATH0"
 #define FLX_BUFFER_SIZE 1024
 #define FLX_BUFFER_PEEK_SIZE 4
 #define FLX_PROTO_SYNC 0xaa
