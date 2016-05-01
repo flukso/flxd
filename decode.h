@@ -28,19 +28,19 @@
 #define DECODE_BUFFER_SIZE 1024
 #define DECODE_TS_THRESHOLD 1234567890
 
-#define DECODE_TOPIC_VOLTAGE "/device/%s/debug/flx/voltage/%d"
-#define DECODE_TOPIC_CURRENT "/device/%s/debug/flx/current/%d"
+#define DECODE_TOPIC_SAR "/device/%s/debug/flx/sar/%d"
+#define DECODE_TOPIC_SDADC "/device/%s/debug/flx/sdadc/%d"
 #define DECODE_TOPIC_TIME "/device/%s/debug/flx/time"
 #define DECODE_TOPIC_COUNTER "/sensor/%s/counter"
 #define DECODE_TOPIC_GAUGE "/sensor/%s/gauge"
 
 #define DECODE_NUM_SAMPLES 32
-#define DECODE_VOLTAGE "[[%d,%d],["\
+#define DECODE_DEBUG_SAR "[[%d,%d],["\
 	"%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,"\
-	"%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu],\"V\"]"
-#define DECODE_CURRENT "[[%d,%d],["\
+	"%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu],\"\"]"
+#define DECODE_DEBUG_SDADC "[[%d,%d],["\
 	"%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,"\
-	"%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd],\"A\"]"
+	"%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd],\"\"]"
 #define DECODE_TIME "{flm:{time:[%d,%d],update:%s},flx:{time:[%d,%d],update:%s}}"
 #define DECODE_COUNTER "[%d, %u, \"%s\"]"
 #define DECODE_COUNTER_FRAC "[%d, %u.%03u, \"%s\"]"
@@ -137,13 +137,13 @@ struct pulse_data_s {
 	uint16_t counter_millis;
 };
 
-struct voltage_s {
+struct sar_s {
 	unsigned int time;
 	unsigned short millis;
 	unsigned short adc[DECODE_NUM_SAMPLES];
 };
 
-struct current_s {
+struct sdadc_s {
 	unsigned int time;
 	unsigned short millis;
 	unsigned short index;
@@ -239,6 +239,16 @@ static bool decode_time_stamp(struct buffer_s *b, struct decode_s *d)
 	return true;
 }
 
+static bool decode_voltage(struct buffer_s *b, struct decode_s *d)
+{
+    return false;
+}
+
+static bool decode_current(struct buffer_s *b, struct decode_s *d)
+{
+    return false;
+}
+
 static void decode_pub_counter(char *sid, uint32_t time, uint32_t counter,
                                uint16_t frac, const char *unit)
 {
@@ -331,14 +341,14 @@ static bool decode_pulse_data(struct buffer_s *b, struct decode_s *d)
 	return false;
 }
 
-static bool decode_voltage(struct buffer_s *b, struct decode_s *d)
+static bool decode_debug_sar(struct buffer_s *b, struct decode_s *d)
 {
 	int i;
 	char topic[CONFIG_STR_MAX];
-	struct voltage_s v;
+	struct sar_s v;
 
 	d->dest = DECODE_DEST_MQTT;
-	d->type = FLX_TYPE_VOLTAGE;
+	d->type = FLX_TYPE_DEBUG_SAR;
 	decode_memcpy(b, (unsigned char *)&v);
 	v.time = ltobl(v.time);
 	v.millis = ltobs(v.millis);
@@ -347,7 +357,7 @@ static bool decode_voltage(struct buffer_s *b, struct decode_s *d)
 	}
 	d->len = snprintf((char *)d->data,
 	    DECODE_BUFFER_SIZE,
-	    DECODE_VOLTAGE,
+	    DECODE_DEBUG_SAR,
 	    v.time,
 	    v.millis,
 	    v.adc[0],
@@ -382,7 +392,7 @@ static bool decode_voltage(struct buffer_s *b, struct decode_s *d)
 	    v.adc[29],
 	    v.adc[30],
 	    v.adc[31]);
-	snprintf(topic, CONFIG_STR_MAX, DECODE_TOPIC_VOLTAGE, conf.device, 1);
+	snprintf(topic, CONFIG_STR_MAX, DECODE_TOPIC_SAR, conf.device, 1);
 	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
 	                  conf.mqtt.retain);
 #ifdef WITH_YKW
@@ -391,14 +401,14 @@ static bool decode_voltage(struct buffer_s *b, struct decode_s *d)
 	return true;
 }
 
-static bool decode_current(struct buffer_s *b, struct decode_s *d)
+static bool decode_debug_sdadc(struct buffer_s *b, struct decode_s *d)
 {
 	int i;
 	char topic[CONFIG_STR_MAX];
-	struct current_s c;
+	struct sdadc_s c;
 
 	d->dest = DECODE_DEST_MQTT;
-	d->type = FLX_TYPE_CURRENT;
+	d->type = FLX_TYPE_DEBUG_SDADC;
 	decode_memcpy(b, (unsigned char *)&c);
 	c.time = ltobl(c.time);
 	c.millis = ltobs(c.millis);
@@ -408,7 +418,7 @@ static bool decode_current(struct buffer_s *b, struct decode_s *d)
 	}
 	d->len = snprintf((char *)d->data,
 	    DECODE_BUFFER_SIZE,
-	    DECODE_CURRENT,
+	    DECODE_DEBUG_SDADC,
 	    c.time,
 	    c.millis,
 	    c.adc[0],
@@ -443,7 +453,7 @@ static bool decode_current(struct buffer_s *b, struct decode_s *d)
 	    c.adc[29],
 	    c.adc[30],
 	    c.adc[31]);
-	snprintf(topic, CONFIG_STR_MAX, DECODE_TOPIC_CURRENT, conf.device,
+	snprintf(topic, CONFIG_STR_MAX, DECODE_TOPIC_SDADC, conf.device,
 	         c.index + 1);
 	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
 	                  conf.mqtt.retain);
@@ -462,13 +472,13 @@ static const decode_fun decode_handler[] = {
 	decode_time_stamp,
 	decode_void, /* time step */
 	decode_void, /* time slew */
+	decode_voltage,
+	decode_current,
 	decode_ct_data,
 	decode_pulse_data,
 	decode_void, /* TODO debug */
-	decode_voltage,
-	decode_current, /* FLX_TYPE_CURRENT1 */
-	decode_current, /* FLX_TYPE_CURRENT2 */
-	decode_current  /* FLX_TYPE_CURRENT3 */
+	decode_debug_sar,
+	decode_debug_sdadc,
 };
 
 #endif

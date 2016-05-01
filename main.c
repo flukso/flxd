@@ -169,7 +169,7 @@ int main(int argc, char **argv)
 	}
 
 #ifdef WITH_YKW
-	conf.ykw = ykw_new(YKW_DEFAULT_THETA);
+	conf.ykw = ykw_new(conf.device, YKW_DEFAULT_THETA);
 	if (conf.ykw == NULL) {
 		rc = 6;
 		goto oom;
