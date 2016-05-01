@@ -28,19 +28,27 @@
 #define DECODE_BUFFER_SIZE 1024
 #define DECODE_TS_THRESHOLD 1234567890
 
-#define DECODE_TOPIC_SAR "/device/%s/debug/flx/sar/%d"
-#define DECODE_TOPIC_SDADC "/device/%s/debug/flx/sdadc/%d"
-#define DECODE_TOPIC_TIME "/device/%s/debug/flx/time"
+#define DECODE_TOPIC_SAR "/device/%s/flx/sar/%d"
+#define DECODE_TOPIC_SDADC "/device/%s/flx/sdadc/%d"
+#define DECODE_TOPIC_VOLTAGE "/device/%s/flx/voltage/%d"
+#define DECODE_TOPIC_CURRENT "/device/%s/flx/current/%d"
+#define DECODE_TOPIC_TIME "/device/%s/flx/time"
 #define DECODE_TOPIC_COUNTER "/sensor/%s/counter"
 #define DECODE_TOPIC_GAUGE "/sensor/%s/gauge"
 
 #define DECODE_NUM_SAMPLES 32
-#define DECODE_DEBUG_SAR "[[%d,%d],["\
+#define DECODE_SAR "[[%d,%d],["\
 	"%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,"\
 	"%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu],\"\"]"
-#define DECODE_DEBUG_SDADC "[[%d,%d],["\
+#define DECODE_SDADC "[[%d,%d],["\
 	"%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,"\
 	"%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd,%hd],\"\"]"
+#define DECODE_VOLTAGE "[[%d,%d],["\
+	"%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,"\
+	"%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld],\"mV\"]"
+#define DECODE_CURRENT "[[%d,%d],["\
+	"%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,"\
+	"%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld],\"mA\"]"
 #define DECODE_TIME "{flm:{time:[%d,%d],update:%s},flx:{time:[%d,%d],update:%s}}"
 #define DECODE_COUNTER "[%d, %u, \"%s\"]"
 #define DECODE_COUNTER_FRAC "[%d, %u.%03u, \"%s\"]"
@@ -138,16 +146,34 @@ struct pulse_data_s {
 };
 
 struct sar_s {
-	unsigned int time;
-	unsigned short millis;
-	unsigned short adc[DECODE_NUM_SAMPLES];
+	uint32_t time;
+	uint16_t millis;
+	uint16_t adc[DECODE_NUM_SAMPLES];
 };
 
 struct sdadc_s {
-	unsigned int time;
-	unsigned short millis;
-	unsigned short index;
-	short adc[DECODE_NUM_SAMPLES];
+	uint32_t time;
+	uint16_t millis;
+	uint8_t index;
+	uint8_t padding;
+	int16_t adc[DECODE_NUM_SAMPLES];
+};
+
+struct voltage_s {
+	uint32_t time;
+	uint16_t millis;
+	uint16_t padding;
+	int32_t rms;
+	int32_t sample[DECODE_NUM_SAMPLES];
+};
+
+struct current_s {
+	uint32_t time;
+	uint16_t millis;
+	uint8_t index;
+	uint8_t padding;
+	int32_t rms;
+	int32_t sample[DECODE_NUM_SAMPLES];
 };
 
 typedef bool (*decode_fun)(struct buffer_s *, struct decode_s *);
@@ -241,12 +267,127 @@ static bool decode_time_stamp(struct buffer_s *b, struct decode_s *d)
 
 static bool decode_voltage(struct buffer_s *b, struct decode_s *d)
 {
-    return false;
+	int i;
+	char topic[CONFIG_STR_MAX];
+	struct voltage_s v;
+
+	d->dest = DECODE_DEST_MQTT;
+	d->type = FLX_TYPE_VOLTAGE;
+	decode_memcpy(b, (unsigned char *)&v);
+	v.time = ltobl(v.time);
+	v.millis = ltobs(v.millis);
+	v.rms = ltobl(v.rms);
+	for (i = 0; i < DECODE_NUM_SAMPLES; i++) {
+		v.sample[i] = ltobl(v.sample[i]);
+	}
+	d->len = snprintf((char *)d->data,
+	    DECODE_BUFFER_SIZE,
+	    DECODE_VOLTAGE,
+	    v.time,
+	    v.millis,
+	    (long)v.sample[0],
+	    (long)v.sample[1],
+	    (long)v.sample[2],
+	    (long)v.sample[3],
+	    (long)v.sample[4],
+	    (long)v.sample[5],
+	    (long)v.sample[6],
+	    (long)v.sample[7],
+	    (long)v.sample[8],
+	    (long)v.sample[9],
+	    (long)v.sample[10],
+	    (long)v.sample[11],
+	    (long)v.sample[12],
+	    (long)v.sample[13],
+	    (long)v.sample[14],
+	    (long)v.sample[15],
+	    (long)v.sample[16],
+	    (long)v.sample[17],
+	    (long)v.sample[18],
+	    (long)v.sample[19],
+	    (long)v.sample[20],
+	    (long)v.sample[21],
+	    (long)v.sample[22],
+	    (long)v.sample[23],
+	    (long)v.sample[24],
+	    (long)v.sample[25],
+	    (long)v.sample[26],
+	    (long)v.sample[27],
+	    (long)v.sample[28],
+	    (long)v.sample[29],
+	    (long)v.sample[30],
+	    (long)v.sample[31]);
+	snprintf(topic, CONFIG_STR_MAX, DECODE_TOPIC_VOLTAGE, conf.device, 1);
+	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
+	                  conf.mqtt.retain);
+#ifdef WITH_YKW
+	ykw_process_voltage(conf.ykw, v.time, v.millis, v.rms, (long *)v.sample,
+	                    DECODE_NUM_SAMPLES);
+#endif
+	return true;
 }
 
 static bool decode_current(struct buffer_s *b, struct decode_s *d)
 {
-    return false;
+	int i;
+	char topic[CONFIG_STR_MAX];
+	struct current_s c;
+
+	d->dest = DECODE_DEST_MQTT;
+	d->type = FLX_TYPE_CURRENT;
+	decode_memcpy(b, (unsigned char *)&c);
+	c.time = ltobl(c.time);
+	c.millis = ltobs(c.millis);
+	c.rms = ltobl(c.rms);
+	for (i = 0; i < DECODE_NUM_SAMPLES; i++) {
+		c.sample[i] = ltobl(c.sample[i]);
+	}
+	d->len = snprintf((char *)d->data,
+	    DECODE_BUFFER_SIZE,
+	    DECODE_CURRENT,
+	    c.time,
+	    c.millis,
+	    (long)c.sample[0],
+	    (long)c.sample[1],
+	    (long)c.sample[2],
+	    (long)c.sample[3],
+	    (long)c.sample[4],
+	    (long)c.sample[5],
+	    (long)c.sample[6],
+	    (long)c.sample[7],
+	    (long)c.sample[8],
+	    (long)c.sample[9],
+	    (long)c.sample[10],
+	    (long)c.sample[11],
+	    (long)c.sample[12],
+	    (long)c.sample[13],
+	    (long)c.sample[14],
+	    (long)c.sample[15],
+	    (long)c.sample[16],
+	    (long)c.sample[17],
+	    (long)c.sample[18],
+	    (long)c.sample[19],
+	    (long)c.sample[20],
+	    (long)c.sample[21],
+	    (long)c.sample[22],
+	    (long)c.sample[23],
+	    (long)c.sample[24],
+	    (long)c.sample[25],
+	    (long)c.sample[26],
+	    (long)c.sample[27],
+	    (long)c.sample[28],
+	    (long)c.sample[29],
+	    (long)c.sample[30],
+	    (long)c.sample[31]);
+	snprintf(topic, CONFIG_STR_MAX, DECODE_TOPIC_CURRENT, conf.device,
+	         c.index + 1);
+	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
+	                  conf.mqtt.retain);
+#ifdef WITH_YKW
+	ykw_process_current(conf.ykw, c.time, c.millis, c.index, c.rms,
+	                    (long *)c.sample, DECODE_NUM_SAMPLES);
+#endif
+	return true;
 }
 
 static void decode_pub_counter(char *sid, uint32_t time, uint32_t counter,
@@ -345,59 +486,56 @@ static bool decode_debug_sar(struct buffer_s *b, struct decode_s *d)
 {
 	int i;
 	char topic[CONFIG_STR_MAX];
-	struct sar_s v;
+	struct sar_s sar;
 
 	d->dest = DECODE_DEST_MQTT;
-	d->type = FLX_TYPE_DEBUG_SAR;
-	decode_memcpy(b, (unsigned char *)&v);
-	v.time = ltobl(v.time);
-	v.millis = ltobs(v.millis);
+	d->type = FLX_TYPE_SAR;
+	decode_memcpy(b, (unsigned char *)&sar);
+	sar.time = ltobl(sar.time);
+	sar.millis = ltobs(sar.millis);
 	for (i = 0; i < DECODE_NUM_SAMPLES; i++) {
-		v.adc[i] = ltobs(v.adc[i]);
+		sar.adc[i] = ltobs(sar.adc[i]);
 	}
 	d->len = snprintf((char *)d->data,
 	    DECODE_BUFFER_SIZE,
-	    DECODE_DEBUG_SAR,
-	    v.time,
-	    v.millis,
-	    v.adc[0],
-	    v.adc[1],
-	    v.adc[2],
-	    v.adc[3],
-	    v.adc[4],
-	    v.adc[5],
-	    v.adc[6],
-	    v.adc[7],
-	    v.adc[8],
-	    v.adc[9],
-	    v.adc[10],
-	    v.adc[11],
-	    v.adc[12],
-	    v.adc[13],
-	    v.adc[14],
-	    v.adc[15],
-	    v.adc[16],
-	    v.adc[17],
-	    v.adc[18],
-	    v.adc[19],
-	    v.adc[20],
-	    v.adc[21],
-	    v.adc[22],
-	    v.adc[23],
-	    v.adc[24],
-	    v.adc[25],
-	    v.adc[26],
-	    v.adc[27],
-	    v.adc[28],
-	    v.adc[29],
-	    v.adc[30],
-	    v.adc[31]);
+	    DECODE_SAR,
+	    sar.time,
+	    sar.millis,
+	    sar.adc[0],
+	    sar.adc[1],
+	    sar.adc[2],
+	    sar.adc[3],
+	    sar.adc[4],
+	    sar.adc[5],
+	    sar.adc[6],
+	    sar.adc[7],
+	    sar.adc[8],
+	    sar.adc[9],
+	    sar.adc[10],
+	    sar.adc[11],
+	    sar.adc[12],
+	    sar.adc[13],
+	    sar.adc[14],
+	    sar.adc[15],
+	    sar.adc[16],
+	    sar.adc[17],
+	    sar.adc[18],
+	    sar.adc[19],
+	    sar.adc[20],
+	    sar.adc[21],
+	    sar.adc[22],
+	    sar.adc[23],
+	    sar.adc[24],
+	    sar.adc[25],
+	    sar.adc[26],
+	    sar.adc[27],
+	    sar.adc[28],
+	    sar.adc[29],
+	    sar.adc[30],
+	    sar.adc[31]);
 	snprintf(topic, CONFIG_STR_MAX, DECODE_TOPIC_SAR, conf.device, 1);
 	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
 	                  conf.mqtt.retain);
-#ifdef WITH_YKW
-	ykw_process_voltage(conf.ykw, v.time, v.millis, v.adc, DECODE_NUM_SAMPLES);
-#endif
 	return true;
 }
 
@@ -405,62 +543,57 @@ static bool decode_debug_sdadc(struct buffer_s *b, struct decode_s *d)
 {
 	int i;
 	char topic[CONFIG_STR_MAX];
-	struct sdadc_s c;
+	struct sdadc_s sdadc;
 
 	d->dest = DECODE_DEST_MQTT;
-	d->type = FLX_TYPE_DEBUG_SDADC;
-	decode_memcpy(b, (unsigned char *)&c);
-	c.time = ltobl(c.time);
-	c.millis = ltobs(c.millis);
-	c.index = ltobs(c.index);
+	d->type = FLX_TYPE_SDADC;
+	decode_memcpy(b, (unsigned char *)&sdadc);
+	sdadc.time = ltobl(sdadc.time);
+	sdadc.millis = ltobs(sdadc.millis);
 	for (i = 0; i < DECODE_NUM_SAMPLES; i++) {
-		c.adc[i] = ltobs(c.adc[i]);
+		sdadc.adc[i] = ltobs(sdadc.adc[i]);
 	}
 	d->len = snprintf((char *)d->data,
 	    DECODE_BUFFER_SIZE,
-	    DECODE_DEBUG_SDADC,
-	    c.time,
-	    c.millis,
-	    c.adc[0],
-	    c.adc[1],
-	    c.adc[2],
-	    c.adc[3],
-	    c.adc[4],
-	    c.adc[5],
-	    c.adc[6],
-	    c.adc[7],
-	    c.adc[8],
-	    c.adc[9],
-	    c.adc[10],
-	    c.adc[11],
-	    c.adc[12],
-	    c.adc[13],
-	    c.adc[14],
-	    c.adc[15],
-	    c.adc[16],
-	    c.adc[17],
-	    c.adc[18],
-	    c.adc[19],
-	    c.adc[20],
-	    c.adc[21],
-	    c.adc[22],
-	    c.adc[23],
-	    c.adc[24],
-	    c.adc[25],
-	    c.adc[26],
-	    c.adc[27],
-	    c.adc[28],
-	    c.adc[29],
-	    c.adc[30],
-	    c.adc[31]);
+	    DECODE_SDADC,
+	    sdadc.time,
+	    sdadc.millis,
+	    sdadc.adc[0],
+	    sdadc.adc[1],
+	    sdadc.adc[2],
+	    sdadc.adc[3],
+	    sdadc.adc[4],
+	    sdadc.adc[5],
+	    sdadc.adc[6],
+	    sdadc.adc[7],
+	    sdadc.adc[8],
+	    sdadc.adc[9],
+	    sdadc.adc[10],
+	    sdadc.adc[11],
+	    sdadc.adc[12],
+	    sdadc.adc[13],
+	    sdadc.adc[14],
+	    sdadc.adc[15],
+	    sdadc.adc[16],
+	    sdadc.adc[17],
+	    sdadc.adc[18],
+	    sdadc.adc[19],
+	    sdadc.adc[20],
+	    sdadc.adc[21],
+	    sdadc.adc[22],
+	    sdadc.adc[23],
+	    sdadc.adc[24],
+	    sdadc.adc[25],
+	    sdadc.adc[26],
+	    sdadc.adc[27],
+	    sdadc.adc[28],
+	    sdadc.adc[29],
+	    sdadc.adc[30],
+	    sdadc.adc[31]);
 	snprintf(topic, CONFIG_STR_MAX, DECODE_TOPIC_SDADC, conf.device,
-	         c.index + 1);
+	         sdadc.index + 1);
 	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
 	                  conf.mqtt.retain);
-#ifdef WITH_YKW
-	ykw_process_current(conf.ykw, c.time, c.millis, c.index, c.adc,
-	                    DECODE_NUM_SAMPLES);
-#endif
 	return true;
 }
 
