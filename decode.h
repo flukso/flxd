@@ -321,8 +321,13 @@ static bool decode_voltage(struct buffer_s *b, struct decode_s *d)
 	mosquitto_publish(conf.mosq, NULL, topic, d->len, d->data, conf.mqtt.qos,
 	                  conf.mqtt.retain);
 #ifdef WITH_YKW
-	ykw_process_voltage(conf.ykw, v.time, v.millis, v.rms, (long *)v.sample,
-	                    DECODE_NUM_SAMPLES);
+	if (ykw_process_voltage(conf.ykw, v.time, v.millis, v.rms, (long *)v.sample,
+	                       DECODE_NUM_SAMPLES)) {
+		snprintf(topic, CONFIG_STR_MAX, YKW_TOPIC_EVENT, conf.device);
+		mosquitto_publish(conf.mosq, NULL, topic, conf.ykw->db.fill,
+		                  conf.ykw->db.buffer, conf.mqtt.qos + 1,
+		                  conf.mqtt.retain);
+	}
 #endif
 	return true;
 }
