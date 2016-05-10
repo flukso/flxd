@@ -126,6 +126,13 @@ const char *decode_pulse_gauge_unit[] = {
 	""
 };
 
+const float decode_pulse_gauge_factor[] = {
+	3.6e3f,
+	24 * 3.6e3f,
+	24 * 3.6e3f,
+	1.0f
+};
+
 struct ct_data_s {
 	uint32_t time;
 	uint16_t millis;
@@ -141,6 +148,7 @@ struct pulse_data_s {
 	uint16_t millis;
 	uint8_t port;
 	uint8_t padding;
+	int32_t gauge; /* q20.11 */
 	uint32_t counter_integ;
 	uint16_t counter_millis;
 };
@@ -473,6 +481,7 @@ static bool decode_pulse_data(struct buffer_s *b, struct decode_s *d)
 {
 	int offset, sensor;
 	struct pulse_data_s pulse;
+	float gauge_integ, gauge_frac;
 
 	decode_memcpy(b, (unsigned char*)&pulse);
 	offset = CONFIG_MAX_ANALOG_PORTS * DECODE_MAX_CT_PARAMS;
@@ -484,6 +493,17 @@ static bool decode_pulse_data(struct buffer_s *b, struct decode_s *d)
 	                   ltobl(pulse.counter_integ),
 	                   ltobs(pulse.counter_millis),
 	                   decode_pulse_counter_unit[conf.sensor[sensor].type]);
+	pulse.gauge = ltobl(pulse.gauge);
+	if (pulse.gauge == 0) {
+		return false;
+	}
+	gauge_frac = modff((float)pulse.gauge / 2048.0f *
+	             decode_pulse_gauge_factor[conf.sensor[sensor].type], &gauge_integ);
+	decode_pub_gauge(conf.sensor[sensor].id,
+	                 pulse.time,
+	                 (int32_t)gauge_integ,
+	                 (uint16_t)fabsf(gauge_frac * 1000.0f),
+	                 decode_pulse_gauge_unit[conf.sensor[sensor].type]);
 	return false;
 }
 

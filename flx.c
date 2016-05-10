@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <math.h>
 #include <sys/time.h>
 #include <mosquitto.h>
 #include "config.h"
