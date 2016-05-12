@@ -80,6 +80,28 @@ static void timer(struct uloop_timeout *t)
 	uloop_timeout_set(t, CONFIG_ULOOP_TIMEOUT);
 }
 
+static void mosq_on_connect_cb(struct mosquitto *mosq, void *obj, int rc)
+{
+	if (rc == 0) { /* success */
+		if (conf.verbosity > 0) {
+			fprintf(stdout, "[mosq] connected to broker\n");
+		}
+		mosquitto_subscribe(mosq, NULL, conf.topic_bridge_stat, 0);
+	}
+}
+
+static void mosq_on_message_cb(struct mosquitto *mosq, void *obj,
+                               const struct mosquitto_message *message)
+{
+	if (strcmp(message->topic, conf.topic_bridge_stat) == 0) {
+		if (conf.verbosity > 0) {
+			fprintf(stdout, "[mosq] rx bridge status update: %.1s\n",
+			        (char *)message->payload);
+		}
+		write(conf.fd_globe, message->payload, 1);
+	}
+}
+
 static void ub_sighup(struct ubus_context *ctx, struct ubus_event_handler *ev,
                    const char *type, struct blob_attr *msg)
 {
@@ -140,56 +162,66 @@ int main(int argc, char **argv)
 		}	
 	}
 
+	conf.fd_globe = open(CONFIG_GLOBE_LED_PATH, O_WRONLY);
+	if (conf.fd_globe < 0) {
+		perror(CONFIG_GLOBE_LED_PATH);
+		rc = 1;
+		goto finish;
+	}
 	conf.flx_ufd.fd = open(FLX_DEV, O_RDWR);
 	if (conf.flx_ufd.fd < 0) {
 		perror(FLX_DEV);
-		rc = 1;
+		rc = 2;
 		goto finish;
 	}
 	if (!configure_tty(conf.flx_ufd.fd)) {
 		fprintf(stderr, "%s: Failed to configure tty params\n", FLX_DEV);
-		rc = 2;
+		rc = 3;
 		goto finish;
 	}
 
 	if (!config_init()) {
-		rc = 3;
+		rc = 4;
 		goto oom;
 	}
 	if (!config_load_all()) {
-		rc = 4;
+		rc = 5;
 		goto finish;
 	}
 
 	conf.ubus_ctx = ubus_connect(NULL);
 	if (!conf.ubus_ctx) {
 		fprintf(stderr, "Failed to connect to ubus\n");
-		rc = 5;
+		rc = 6;
 		goto finish;
 	}
 
 #ifdef WITH_YKW
 	conf.ykw = ykw_new(conf.device, YKW_DEFAULT_THETA);
 	if (conf.ykw == NULL) {
-		rc = 6;
+		rc = 7;
 		goto oom;
 	}
 #endif
 
 	mosquitto_lib_init();
-	snprintf(conf.mqtt.id, MQTT_ID_LEN, MQTT_ID_TPL, getpid());
+	snprintf(conf.mqtt.id, CONFIG_MQTT_ID_LEN, CONFIG_MQTT_ID_TPL, getpid());
+	snprintf(conf.topic_bridge_stat, CONFIG_STR_MAX, CONFIG_TOPIC_BRIDGE_STAT,
+	         conf.device);
 	conf.mosq = mosquitto_new(conf.mqtt.id, conf.mqtt.clean_session, &conf);
 	if (!conf.mosq) {
 		switch (errno) {
 		case ENOMEM:
-			rc = 7;
+			rc = 8;
 			goto oom;
 		case EINVAL:
 			fprintf(stderr, "mosq_new: Invalid id and/or clean_session.\n");
-			rc = 8;
+			rc = 9;
 			goto finish;
 		}
 	}
+	mosquitto_connect_callback_set(conf.mosq, mosq_on_connect_cb);
+	mosquitto_message_callback_set(conf.mosq, mosq_on_message_cb);
 	rc = mosquitto_loop_start(conf.mosq);
 	switch (rc) {
 	case MOSQ_ERR_INVAL:

@@ -22,9 +22,11 @@
 #define CONFIG_UBUS_EV_SIGHUP		"flukso.sighup"
 #define CONFIG_UBUS_EV_SHIFT_CALC 	"flx.shift.calc"
 #define CONFIG_LED_MODE_DEFAULT		255
+#define CONFIG_TOPIC_BRIDGE_STAT	"$SYS/broker/connection/flukso-%.6s.flukso/state"
+#define CONFIG_GLOBE_LED_PATH		"/sys/class/leds/globe/brightness"
 
-#define MQTT_ID_TPL					"flxd-p%d"
-#define MQTT_ID_LEN					16
+#define CONFIG_MQTT_ID_TPL			"flxd-p%d"
+#define CONFIG_MQTT_ID_LEN			16
 
 #define ltobs(A) ((((uint16_t)(A) & 0xff00) >> 8) | \
 	              (((uint16_t)(A) & 0x00ff) << 8))
@@ -50,7 +52,7 @@ struct mqtt {
 	char *host;
 	int port;
 	int keepalive;
-	char id[MQTT_ID_LEN];
+	char id[CONFIG_MQTT_ID_LEN];
 	bool clean_session;
 	int qos;
 	int retain;
@@ -80,6 +82,8 @@ struct config {
 	int verbosity;
 	char *me;
 	char device[CONFIG_STR_MAX];
+	char topic_bridge_stat[CONFIG_STR_MAX];
+	int fd_globe;
 	struct sensor sensor[CONFIG_MAX_SENSORS];
 	struct port port[CONFIG_MAX_PORTS];
 	struct main main;
