@@ -457,6 +457,9 @@ static bool decode_ct_data(struct buffer_s *b, struct decode_s *d)
 	ct.time = ltobl(ct.time) - 1;
 	ct.millis = ltobs(ct.millis);
 	for (i = 0; i <= DECODE_CT_PARAM_Q4; i++) {
+		if (!conf.sensor[offset + i].enable) {
+			continue;
+		}
 		decode_pub_counter(conf.sensor[offset + i].id,
 		                   ct.time,
 		                   ltobl(ct.counter_integ[i]),
@@ -464,6 +467,9 @@ static bool decode_ct_data(struct buffer_s *b, struct decode_s *d)
 		                   decode_ct_counter_unit[i]);
 	}
 	for (i = 0; i < DECODE_MAX_CT_PARAMS; i++) {
+		if (!conf.sensor[offset + i].enable) {
+			continue;
+		}
 		ct.gauge[i] = ltobl(ct.gauge[i]);
 		integer = ct.gauge[i] >> 11; /* ASR */
 		decimal = ftod(ct.gauge[i] & DECODE_11BIT_FRAC_MASK, 11);
@@ -486,6 +492,9 @@ static bool decode_pulse_data(struct buffer_s *b, struct decode_s *d)
 	decode_memcpy(b, (unsigned char*)&pulse);
 	offset = CONFIG_MAX_ANALOG_PORTS * DECODE_MAX_CT_PARAMS;
 	sensor = offset + pulse.port - CONFIG_MAX_ANALOG_PORTS;
+	if (!conf.sensor[sensor].enable) {
+		return false;
+	}
 	pulse.time = ltobl(pulse.time);
 	pulse.millis = ltobs(pulse.millis);
 	decode_pub_counter(conf.sensor[sensor].id,
