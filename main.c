@@ -261,7 +261,9 @@ finish:
 	mosquitto_loop_stop(conf.mosq, false);
 	mosquitto_destroy(conf.mosq);
 	mosquitto_lib_cleanup();
+#ifdef WITH_YKW
 	ykw_free(conf.ykw);
+#endif
 	if (conf.ubus_ctx != NULL) {
 		ubus_free(conf.ubus_ctx);
 	}
