@@ -467,10 +467,10 @@ static bool decode_ct_data(struct buffer_s *b, struct decode_s *d)
 		                   decode_ct_counter_unit[i]);
 	}
 	for (i = 0; i < DECODE_MAX_CT_PARAMS; i++) {
+		ct.gauge[i] = ltobl(ct.gauge[i]);
 		if (!conf.sensor[offset + i].enable) {
 			continue;
 		}
-		ct.gauge[i] = ltobl(ct.gauge[i]);
 		integer = ct.gauge[i] >> 11; /* ASR */
 		decimal = ftod(ct.gauge[i] & DECODE_11BIT_FRAC_MASK, 11);
 		decode_pub_gauge(conf.sensor[offset + i].id,

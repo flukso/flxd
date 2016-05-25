@@ -26,7 +26,8 @@
 #include "config.h"
 #include "shift.h"
 
-int32_t alpha[CONFIG_MAX_ANALOG_PORTS];
+const uint8_t map_shift_1p[] = { 0, 0, 3, 3, 3, 0 };
+int32_t alpha[CONFIG_MAX_ANALOG_PORTS] = { 0 };
 
 static int32_t shift_q20dot11_to_int(int32_t x)
 {
@@ -35,7 +36,9 @@ static int32_t shift_q20dot11_to_int(int32_t x)
 
 void shift_push_alpha(int port, int32_t a)
 {
-	alpha[port] = shift_q20dot11_to_int(a);
+	if (port < CONFIG_MAX_ANALOG_PORTS) {
+		alpha[port] = shift_q20dot11_to_int(a);
+	}
 }
 
 static void shift_uci_commit(void)
@@ -84,11 +87,20 @@ void shift_calculate(void)
 	int32_t a;
 
 	for (i = 0; i < CONFIG_MAX_ANALOG_PORTS; i++) {
+		if (conf.port[i].enable == 0) {
+			continue;
+		}
 		a = alpha[i] + 30;
 		if (a < 0) {
 			a += 360;
 		}
 		conf.port[i].shift = a / 60;
+		if (conf.main.phase == CONFIG_1PHASE) {
+			conf.port[i].shift = map_shift_1p[conf.port[i].shift];
+		};
+		if (conf.verbosity > 0) {
+			fprintf(stdout, SHIFT_DEBUG, i, alpha[i], a, conf.port[i].shift);
+		}
 	}
 	shift_uci_commit();	
 	config_push();
