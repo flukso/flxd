@@ -202,6 +202,9 @@ static void config_load_main(void)
 		config_phase_to_index(str_value) : CONFIG_1PHASE;
 	conf.main.led = (uint8_t)config_load_uint(CONFIG_UCI_LED_MODE,
 	                                          CONFIG_LED_MODE_DEFAULT);
+#ifdef WITH_YKW
+	conf.theta = config_load_uint(CONFIG_UCI_THETA, YKW_DEFAULT_THETA);
+#endif
 }
 
 void config_push(void)

@@ -110,6 +110,9 @@ static void ub_sighup(struct ubus_context *ctx, struct ubus_event_handler *ev,
 	}
 	config_init();
 	config_load_all();
+#ifdef WITH_YKW
+	ykw_set_theta(conf.ykw, conf.theta);
+#endif
 }
 
 static void ub_shift_calc(struct ubus_context *ctx, struct ubus_event_handler *ev,
@@ -197,7 +200,7 @@ int main(int argc, char **argv)
 	}
 
 #ifdef WITH_YKW
-	conf.ykw = ykw_new(conf.device, YKW_DEFAULT_THETA, conf.verbosity);
+	conf.ykw = ykw_new(conf.device, conf.theta, conf.verbosity);
 	if (conf.ykw == NULL) {
 		rc = 7;
 		goto oom;

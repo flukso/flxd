@@ -18,6 +18,7 @@
 #define CONFIG_UCI_DEVICE			"system.@system[0].device"
 #define CONFIG_UCI_PHASE			"flx.main.phase"
 #define CONFIG_UCI_LED_MODE			"flx.main.led_mode"
+#define CONFIG_UCI_THETA			"flx.main.theta"
 #define CONFIG_ULOOP_TIMEOUT		1000 /* ms */
 #define CONFIG_UBUS_EV_SIGHUP		"flukso.sighup"
 #define CONFIG_UBUS_EV_SHIFT_CALC 	"flx.shift.calc"
@@ -96,6 +97,7 @@ struct config {
 	struct mqtt mqtt;
 	struct mosquitto *mosq;
 #ifdef WITH_YKW
+	int theta;
 	struct ykw_ctx *ykw;
 #endif
 };
