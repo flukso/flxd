@@ -98,6 +98,7 @@ struct config {
 	struct mosquitto *mosq;
 #ifdef WITH_YKW
 	int theta;
+	unsigned int enabled;
 	struct ykw_ctx *ykw;
 #endif
 };

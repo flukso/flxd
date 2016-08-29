@@ -112,6 +112,7 @@ static void ub_sighup(struct ubus_context *ctx, struct ubus_event_handler *ev,
 	config_load_all();
 #ifdef WITH_YKW
 	ykw_set_theta(conf.ykw, conf.theta);
+	ykw_set_enabled(conf.ykw, conf.enabled);
 #endif
 }
 
@@ -200,7 +201,7 @@ int main(int argc, char **argv)
 	}
 
 #ifdef WITH_YKW
-	conf.ykw = ykw_new(conf.device, conf.theta, conf.verbosity);
+	conf.ykw = ykw_new(conf.device, conf.theta, conf.enabled, conf.verbosity);
 	if (conf.ykw == NULL) {
 		rc = 7;
 		goto oom;

@@ -178,6 +178,11 @@ static void config_load_port(int port)
 			break;
 		case 3:
 			conf.port[port].enable = (uint8_t)config_load_uint(key, 0);
+#ifdef WITH_YKW
+            if (conf.port[port].enable) {
+                conf.enabled |= (1 << port);
+            }
+#endif
 			break;
 		}
 	}
