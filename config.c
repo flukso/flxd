@@ -179,9 +179,9 @@ static void config_load_port(int port)
 		case 3:
 			conf.port[port].enable = (uint8_t)config_load_uint(key, 0);
 #ifdef WITH_YKW
-            if (conf.port[port].enable) {
-                conf.enabled |= (1 << port);
-            }
+			if (conf.port[port].enable) {
+				conf.enabled |= (1 << port);
+			}
 #endif
 			break;
 		}
@@ -222,6 +222,9 @@ bool config_load_all(void)
 {
 	int i;
 
+#ifdef WITH_YKW
+	conf.enabled = 0;
+#endif
 	if (!config_load_str(CONFIG_UCI_DEVICE, conf.device))
 		return false;
 	for (i = 0; i < CONFIG_MAX_SENSORS; i++) {
