@@ -164,6 +164,7 @@ struct pulse_data_s {
 struct kube_packet_s {
 	uint32_t time;
 	uint16_t millis;
+	uint8_t rssi;
 	uint8_t packet[DECODE_KUBE_MAX_PACKET_SIZE];
 };
 
@@ -552,10 +553,11 @@ static bool decode_kube_packet(struct buffer_s *b, struct decode_s *d)
 	kube.time = ltobl(kube.time);
 	kube.millis = ltobs(kube.millis);
 	timestamp = (uint64_t)kube.time * 1000 + kube.millis;
-	packet_len = b->data[(b->tail + 1) % FLX_BUFFER_SIZE] - 6; /* timestamp */
+	packet_len = b->data[(b->tail + 1) % FLX_BUFFER_SIZE] - 7; /* timestamp + rssi */
 	decode_hexlify(kube.packet, hex, packet_len);
 	blob_buf_init(&ubuf, 0);
 	blobmsg_add_u64(&ubuf, "time", timestamp);
+	blobmsg_add_u16(&ubuf, "rssi", (uint16_t)kube.rssi); /* u8 gives a boolean? */
 	blobmsg_add_string(&ubuf, "hex", (char *)hex);
 	ubus_send_event(conf.ubus_ctx, DECODE_UBUS_PATH_KUBE_PACKET, ubuf.head);
 	return false;
