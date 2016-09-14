@@ -26,6 +26,7 @@
 #define DECODE_H
 
 #define DECODE_BUFFER_SIZE 1024
+#define DECODE_MAX_TELEGRAM_PAYLOAD_SIZE 256
 #define DECODE_TS_THRESHOLD 1234567890
 #define DECODE_KUBE_MAX_PACKET_SIZE (64 + 5)
 
@@ -60,6 +61,7 @@
 #define DECODE_SIGN_MASK 0x80000000UL
 
 #define DECODE_UBUS_PATH_KUBE_PACKET	"flukso.kube.packet.rx"
+#define DECODE_UBUS_PATH_RFM_DEBUG		"flukso.rfm.debug"
 
 const uint8_t decode_bin2hex[] = {
 	'0', '1', '2', '3', '4', '5', '6', '7',
@@ -222,6 +224,8 @@ static bool decode_ping(struct buffer_s *b, struct decode_s *d)
 {
 	/* we only get pinged when no port config is present */
 	config_push();
+	spin(SPIN_100K_CYCLES);
+	config_push_kube();
 	return false;
 }
 
@@ -678,6 +682,21 @@ static bool decode_debug_sdadc(struct buffer_s *b, struct decode_s *d)
 	return true;
 }
 
+static bool decode_debug_rfm(struct buffer_s *b, struct decode_s *d)
+{
+	uint8_t len;
+	uint8_t rfm[DECODE_MAX_TELEGRAM_PAYLOAD_SIZE];
+	uint8_t hex[DECODE_MAX_TELEGRAM_PAYLOAD_SIZE * 2 + 1] = { 0 };
+	struct blob_buf ubuf = { 0 };
+
+	len = b->data[(b->tail + 1) % FLX_BUFFER_SIZE];
+	decode_memcpy(b, rfm);
+	decode_hexlify(rfm, hex, len);
+	blob_buf_init(&ubuf, 0);
+	blobmsg_add_string(&ubuf, "hex", (char *)hex);
+	ubus_send_event(conf.ubus_ctx, DECODE_UBUS_PATH_RFM_DEBUG, ubuf.head);
+	return false;
+}
 
 static const decode_fun decode_handler[] = {
 	decode_ping,
@@ -695,6 +714,7 @@ static const decode_fun decode_handler[] = {
 	decode_void, /* TODO debug */
 	decode_debug_sar,
 	decode_debug_sdadc,
+	decode_debug_rfm,
 };
 
 #endif

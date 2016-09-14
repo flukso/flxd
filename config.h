@@ -19,10 +19,12 @@
 #define CONFIG_UCI_PHASE			"flx.main.phase"
 #define CONFIG_UCI_LED_MODE			"flx.main.led_mode"
 #define CONFIG_UCI_THETA			"flx.main.theta"
+#define CONFIG_UCI_COLLECT_GRP		"kube.main.collect_group"
 #define CONFIG_ULOOP_TIMEOUT		1000 /* ms */
 #define CONFIG_UBUS_EV_SIGHUP		"flukso.sighup"
 #define CONFIG_UBUS_EV_SHIFT_CALC 	"flx.shift.calc"
 #define CONFIG_LED_MODE_DEFAULT		255
+#define CONFIG_COLLECT_GRP_DEFAULT	212
 #define CONFIG_TOPIC_BRIDGE_STAT	"$SYS/broker/connection/flukso-%.6s.flukso/state"
 #define CONFIG_GLOBE_LED_PATH		"/sys/class/leds/globe/brightness"
 
@@ -79,6 +81,10 @@ struct main {
 	uint8_t led;
 };
 
+struct kube {
+	uint8_t collect_group;
+};
+
 struct config {
 	int verbosity;
 	char *me;
@@ -88,6 +94,7 @@ struct config {
 	struct sensor sensor[CONFIG_MAX_SENSORS];
 	struct port port[CONFIG_MAX_PORTS];
 	struct main main;
+	struct kube kube;
 	struct uci_context *uci_ctx;
 	struct uloop_fd flx_ufd;
 	struct uloop_timeout timeout;
@@ -108,5 +115,6 @@ extern struct config conf;
 bool config_init(void);
 bool config_load_all(void);
 void config_push(void);
+void config_push_kube(void);
 
 #endif

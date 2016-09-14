@@ -30,6 +30,7 @@
 #include <math.h>
 #include <sys/time.h>
 #include <mosquitto.h>
+#include "spin.h"
 #include "config.h"
 #include "shift.h"
 #include "flx.h"

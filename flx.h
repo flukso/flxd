@@ -48,6 +48,7 @@ enum flx_type {
 	FLX_TYPE_DEBUG,
 	FLX_TYPE_SAR,
 	FLX_TYPE_SDADC,
+	FLX_TYPE_RFM,
 	FLX_MAX_TYPES
 };
 

@@ -7,7 +7,7 @@ LIBS = -lm -lubox -lubus -luci -lmosquitto
 CSTD = -std=gnu99
 WARN = -Wall -pedantic
 
-CFLAGS += -O2 $(CSTD) $(WARN) $(INCDIR)
+CFLAGS += -O2 -ggdb3 $(CSTD) $(WARN) $(INCDIR)
 LDFLAGS += $(CSTD) $(LIBDIR)
 
 ifeq ($(WITH_YKW),yes)

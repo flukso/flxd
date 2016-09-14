@@ -25,6 +25,7 @@
 #include "math.h"
 #include "config.h"
 #include "flx.h"
+#include "spin.h"
 
 const char* config_uci_sensor_tpl[] = {
 	"flukso.%d.id",
@@ -218,6 +219,18 @@ void config_push(void)
 	       sizeof(struct port) * CONFIG_MAX_PORTS + sizeof(struct main));
 }
 
+void config_load_kube(void)
+{
+	conf.kube.collect_group = (uint8_t)config_load_uint(
+	    CONFIG_UCI_COLLECT_GRP, CONFIG_COLLECT_GRP_DEFAULT);
+}
+
+void config_push_kube(void)
+{
+	flx_tx(FLX_TYPE_KUBE_CTRL, (unsigned char *)&conf.kube,
+	       sizeof(struct kube));
+}
+
 bool config_load_all(void)
 {
 	int i;
@@ -237,6 +250,8 @@ bool config_load_all(void)
 	}
 	config_load_main();
 	config_push();
+	spin(SPIN_100K_CYCLES);
+	config_load_kube();
+	config_push_kube();
 	return true;
 }
-
