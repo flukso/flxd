@@ -221,8 +221,8 @@ void config_push(void)
 
 void config_load_kube(void)
 {
-	conf.kube.collect_group = (uint8_t)config_load_uint(
-	    CONFIG_UCI_COLLECT_GRP, CONFIG_COLLECT_GRP_DEFAULT);
+	conf.kube.group = (uint8_t)config_load_uint(CONFIG_UCI_COLLECT_GRP,
+	                                            CONFIG_COLLECT_GRP_DEFAULT);
 }
 
 void config_push_kube(void)

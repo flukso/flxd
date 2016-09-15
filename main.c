@@ -106,7 +106,7 @@ static void ub_sighup(struct ubus_context *ctx, struct ubus_event_handler *ev,
                    const char *type, struct blob_attr *msg)
 {
 	if (conf.verbosity > 0) {
-		fprintf(stdout, "[ubus] rx %s event\n", CONFIG_UBUS_EV_SIGHUP);
+		fprintf(stdout, CONFIG_UBUS_DEBUG, CONFIG_UBUS_EV_SIGHUP);
 	}
 	config_init();
 	config_load_all();
@@ -120,9 +120,33 @@ static void ub_shift_calc(struct ubus_context *ctx, struct ubus_event_handler *e
                    const char *type, struct blob_attr *msg)
 {
 	if (conf.verbosity > 0) {
-		fprintf(stdout, "[ubus] rx %s event\n", CONFIG_UBUS_EV_SHIFT_CALC);
+		fprintf(stdout, CONFIG_UBUS_DEBUG, CONFIG_UBUS_EV_SHIFT_CALC);
 	}
 	shift_calculate();
+}
+
+static void ub_kube_ctrl(struct ubus_context *ctx, struct ubus_event_handler *ev,
+                   const char *type, struct blob_attr *msg)
+{
+	int rem;
+	struct blob_attr *attr;
+	void *data;
+
+	if (conf.verbosity > 0) {
+		fprintf(stdout, CONFIG_UBUS_DEBUG, CONFIG_UBUS_EV_KUBE_CTRL);
+	}
+	rem = blob_len(msg);
+	blobmsg_for_each_attr(attr, msg, rem) {
+		if (strcmp("group", blobmsg_name(attr)) == 0) {
+			data = blobmsg_data(attr);
+			if (blob_id(attr) != BLOBMSG_TYPE_INT32) {
+				fprintf(stderr, "[kube] 'group' data is not uint32_t\n");
+			} else {
+				conf.kube.group = be32_to_cpu(*(uint32_t *)data);
+				config_push_kube();
+			}
+		}
+	}
 }
 
 struct config conf = {
@@ -140,6 +164,9 @@ struct config conf = {
 	},
 	.ubus_ev_shift_calc = {
 		.cb = ub_shift_calc
+	},
+	.ubus_ev_kube_ctrl = {
+		.cb = ub_kube_ctrl
 	},
 	.mqtt = {
 		.host = "localhost",
@@ -254,6 +281,8 @@ int main(int argc, char **argv)
 	                            CONFIG_UBUS_EV_SIGHUP);
 	ubus_register_event_handler(conf.ubus_ctx, &conf.ubus_ev_shift_calc,
 	                            CONFIG_UBUS_EV_SHIFT_CALC);
+	ubus_register_event_handler(conf.ubus_ctx, &conf.ubus_ev_kube_ctrl,
+	                            CONFIG_UBUS_EV_KUBE_CTRL);
 	uloop_run();
 	uloop_done();
 	goto finish;

@@ -22,7 +22,9 @@
 #define CONFIG_UCI_COLLECT_GRP		"kube.main.collect_group"
 #define CONFIG_ULOOP_TIMEOUT		1000 /* ms */
 #define CONFIG_UBUS_EV_SIGHUP		"flukso.sighup"
-#define CONFIG_UBUS_EV_SHIFT_CALC 	"flx.shift.calc"
+#define CONFIG_UBUS_EV_SHIFT_CALC	"flx.shift.calc"
+#define CONFIG_UBUS_EV_KUBE_CTRL	"flukso.kube.ctrl"
+#define CONFIG_UBUS_DEBUG			"[ubus] rx %s event\n"
 #define CONFIG_LED_MODE_DEFAULT		255
 #define CONFIG_COLLECT_GRP_DEFAULT	212
 #define CONFIG_TOPIC_BRIDGE_STAT	"$SYS/broker/connection/flukso-%.6s.flukso/state"
@@ -82,7 +84,7 @@ struct main {
 };
 
 struct kube {
-	uint8_t collect_group;
+	uint8_t group;
 };
 
 struct config {
@@ -101,6 +103,7 @@ struct config {
 	struct ubus_context *ubus_ctx;
 	struct ubus_event_handler ubus_ev_sighup;
 	struct ubus_event_handler ubus_ev_shift_calc;
+	struct ubus_event_handler ubus_ev_kube_ctrl;
 	struct mqtt mqtt;
 	struct mosquitto *mosq;
 #ifdef WITH_YKW
