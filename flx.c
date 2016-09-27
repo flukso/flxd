@@ -30,16 +30,13 @@
 #include <math.h>
 #include <sys/time.h>
 #include <mosquitto.h>
+#include "binary.h"
 #include "spin.h"
 #include "config.h"
 #include "shift.h"
 #include "flx.h"
 #include "decode.h"
 #include "encode.h"
-
-const char bin2hex[] = {
-	'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'
-};
 
 const char* state2string[] = {
 	"sync1", "sync2", "head"

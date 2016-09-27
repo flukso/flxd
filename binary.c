@@ -22,52 +22,53 @@
  * SOFTWARE.
  */
 
-#ifndef FLX_H
-#define FLX_H
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include "binary.h"
 
-#include <libubox/uloop.h>
-
-#define FLX_DEV "/dev/ttyATH0"
-#define FLX_BUFFER_SIZE 1024
-#define FLX_BUFFER_PEEK_SIZE 4
-#define FLX_PROTO_SYNC 0xaa
-#define FLX_KUBE_MAX_PACKET_SIZE (66 + 5)
-
-enum flx_type {
-	FLX_TYPE_PING,
-	FLX_TYPE_PONG,
-	FLX_TYPE_PORT_CONFIG,
-	FLX_TYPE_TIME_STAMP,
-	FLX_TYPE_TIME_STEP,
-	FLX_TYPE_TIME_SLEW,
-	FLX_TYPE_VOLTAGE,
-	FLX_TYPE_CURRENT,
-	FLX_TYPE_CT_DATA,
-	FLX_TYPE_PULSE_DATA,
-	FLX_TYPE_KUBE_PACKET,
-	FLX_TYPE_KUBE_CTRL,
-	FLX_TYPE_DEBUG,
-	FLX_TYPE_SAR,
-	FLX_TYPE_SDADC,
-	FLX_TYPE_RFM,
-	FLX_MAX_TYPES
+const uint8_t bin2hex[] = {
+	'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'
 };
 
-enum flx_buffer_state {
-	FLX_BUFFER_STATE_SYNC1,
-	FLX_BUFFER_STATE_SYNC2,
-	FLX_BUFFER_STATE_HEAD
-};
+void hexlify(uint8_t *bin, uint8_t *hex, size_t len)
+{
+	size_t i;
 
-struct buffer_s {
-	size_t head;
-	size_t tail;
-	enum flx_buffer_state state;
-    /* unsigned qualifier needed for comparison with FLX_PROTO_SYNC */
-	unsigned char data[FLX_BUFFER_SIZE];
-};
+	for (i = 0; i < len; i++) {
+		hex[2 * i] = bin2hex[(bin[i] & 0xf0) >> 4];
+		hex[2 * i + 1] = bin2hex[(bin[i] & 0x0f)];
+	}
+}
 
-void flx_rx(struct uloop_fd *ufd, unsigned int events);
-int flx_tx(unsigned char type, unsigned char *data, size_t len);
+bool unhexlify(uint8_t *hex, uint8_t *bin, size_t len)
+{
+	size_t i;
+	uint8_t c;
 
-#endif
+	for (i = 0; i < len / 2; i++) {
+		c = hex[2 * i];
+		if (c >= '0' && c <= '9') {
+			bin[i] = (c - '0') << 4;
+		} else if (c >= 'a' && c <= 'f') {
+			bin[i] = (c - 'a' + 10) << 4;
+		} else if (c >= 'A' && c <= 'F') {
+			bin[i] = (c - 'A' + 10) << 4;
+		} else {
+			return false;
+		}
+
+		c = hex[2 * i + 1];
+		if (c >= '0' && c <= '9') {
+			bin[i] += c - '0';
+		} else if (c >= 'a' && c <= 'f') {
+			bin[i] += c - 'a' + 10;
+		} else if (c >= 'A' && c <= 'F') {
+			bin[i] += c - 'A' + 10;
+		} else {
+			return false;
+		}
+	}
+	return true;
+}
+

@@ -63,11 +63,6 @@
 #define DECODE_UBUS_PATH_KUBE_PACKET	"flukso.kube.packet.rx"
 #define DECODE_UBUS_PATH_RFM_DEBUG		"flukso.rfm.debug"
 
-const uint8_t decode_bin2hex[] = {
-	'0', '1', '2', '3', '4', '5', '6', '7',
-	'8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
-};
-
 enum decode_dest {
 	DECODE_DEST_DAEMON,
 	DECODE_DEST_FLX,
@@ -535,16 +530,6 @@ static bool decode_pulse_data(struct buffer_s *b, struct decode_s *d)
 	return false;
 }
 
-static void decode_hexlify(uint8_t *bin, uint8_t *hex, size_t len)
-{
-	size_t i;
-
-	for (i = 0; i < len; i++) {
-		hex[2 * i] = decode_bin2hex[(bin[i] & 0xf0) >> 4];
-		hex[2 * i + 1] = decode_bin2hex[(bin[i] & 0x0f)];
-	}
-}
-
 static bool decode_kube_packet(struct buffer_s *b, struct decode_s *d)
 {
 	uint64_t timestamp;
@@ -558,7 +543,7 @@ static bool decode_kube_packet(struct buffer_s *b, struct decode_s *d)
 	kube.millis = ltobs(kube.millis);
 	timestamp = (uint64_t)kube.time * 1000 + kube.millis;
 	packet_len = b->data[(b->tail + 1) % FLX_BUFFER_SIZE] - 7; /* timestamp + rssi */
-	decode_hexlify(kube.packet, hex, packet_len);
+	hexlify(kube.packet, hex, packet_len);
 	blob_buf_init(&ubuf, 0);
 	blobmsg_add_u64(&ubuf, "time", timestamp);
 	blobmsg_add_u16(&ubuf, "rssi", (uint16_t)kube.rssi); /* u8 gives a boolean? */
@@ -691,7 +676,7 @@ static bool decode_debug_rfm(struct buffer_s *b, struct decode_s *d)
 
 	len = b->data[(b->tail + 1) % FLX_BUFFER_SIZE];
 	decode_memcpy(b, rfm);
-	decode_hexlify(rfm, hex, len);
+	hexlify(rfm, hex, len);
 	blob_buf_init(&ubuf, 0);
 	blobmsg_add_string(&ubuf, "hex", (char *)hex);
 	ubus_send_event(conf.ubus_ctx, DECODE_UBUS_PATH_RFM_DEBUG, ubuf.head);

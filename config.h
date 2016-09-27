@@ -24,6 +24,7 @@
 #define CONFIG_UBUS_EV_SIGHUP		"flukso.sighup"
 #define CONFIG_UBUS_EV_SHIFT_CALC	"flx.shift.calc"
 #define CONFIG_UBUS_EV_KUBE_CTRL	"flukso.kube.ctrl"
+#define CONFIG_UBUS_EV_KUBE_PKT_TX	"flukso.kube.packet.tx"
 #define CONFIG_UBUS_DEBUG			"[ubus] rx %s event\n"
 #define CONFIG_LED_MODE_DEFAULT		255
 #define CONFIG_COLLECT_GRP_DEFAULT	212
@@ -104,6 +105,7 @@ struct config {
 	struct ubus_event_handler ubus_ev_sighup;
 	struct ubus_event_handler ubus_ev_shift_calc;
 	struct ubus_event_handler ubus_ev_kube_ctrl;
+	struct ubus_event_handler ubus_ev_kube_packet_tx;
 	struct mqtt mqtt;
 	struct mosquitto *mosq;
 #ifdef WITH_YKW

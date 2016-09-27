@@ -32,6 +32,8 @@
 #include <unistd.h>
 #include <termios.h>
 #include <mosquitto.h>
+#include <stdint.h>
+#include "binary.h"
 #include "config.h"
 #include "flx.h"
 #include "shift.h"
@@ -140,10 +142,39 @@ static void ub_kube_ctrl(struct ubus_context *ctx, struct ubus_event_handler *ev
 		if (strcmp("group", blobmsg_name(attr)) == 0) {
 			data = blobmsg_data(attr);
 			if (blob_id(attr) != BLOBMSG_TYPE_INT32) {
-				fprintf(stderr, "[kube] 'group' data is not uint32_t\n");
+				fprintf(stderr, "[kube] 'group' data type is not uint32_t\n");
 			} else {
 				conf.kube.group = be32_to_cpu(*(uint32_t *)data);
 				config_push_kube();
+			}
+		}
+	}
+}
+
+static void ub_kube_packet_tx(struct ubus_context *ctx, struct ubus_event_handler *ev,
+                   const char *type, struct blob_attr *msg)
+{
+	int len, rem;
+	struct blob_attr *attr;
+	void *hex;
+	uint8_t bin[FLX_KUBE_MAX_PACKET_SIZE + 1] = { 0 };
+
+	if (conf.verbosity > 0) {
+		fprintf(stdout, CONFIG_UBUS_DEBUG, CONFIG_UBUS_EV_KUBE_PKT_TX);
+	}
+	rem = blob_len(msg);
+	blobmsg_for_each_attr(attr, msg, rem) {
+		if (strcmp("hex", blobmsg_name(attr)) == 0) {
+			hex = blobmsg_data(attr);
+			len = blobmsg_len(attr) - 1; /* pinch off the null termination */
+			if (blob_id(attr) != BLOBMSG_TYPE_STRING) {
+				fprintf(stderr, "[kube] 'group' data type is not string\n");
+			} else if (len > FLX_KUBE_MAX_PACKET_SIZE * 2) {
+				fprintf(stderr, "[kube] tx packet exceeds max size\n");
+			} else {
+				if (unhexlify(hex, bin, len)) {
+					flx_tx(FLX_TYPE_KUBE_PACKET, bin, len / 2);
+				}
 			}
 		}
 	}
@@ -167,6 +198,9 @@ struct config conf = {
 	},
 	.ubus_ev_kube_ctrl = {
 		.cb = ub_kube_ctrl
+	},
+	.ubus_ev_kube_packet_tx = {
+		.cb = ub_kube_packet_tx
 	},
 	.mqtt = {
 		.host = "localhost",
@@ -283,6 +317,8 @@ int main(int argc, char **argv)
 	                            CONFIG_UBUS_EV_SHIFT_CALC);
 	ubus_register_event_handler(conf.ubus_ctx, &conf.ubus_ev_kube_ctrl,
 	                            CONFIG_UBUS_EV_KUBE_CTRL);
+	ubus_register_event_handler(conf.ubus_ctx, &conf.ubus_ev_kube_packet_tx,
+	                            CONFIG_UBUS_EV_KUBE_PKT_TX);
 	uloop_run();
 	uloop_done();
 	goto finish;
