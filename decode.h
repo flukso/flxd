@@ -493,7 +493,8 @@ static bool decode_ct_data(struct buffer_s *b, struct decode_s *d)
 		                 decimal,
 		                 decode_ct_gauge_unit[i]);
 	}
-	shift_push_alpha(ct.port, ct.gauge[DECODE_CT_PARAM_ALPHA]);
+	shift_push_params(ct.port, ct.gauge[DECODE_CT_PARAM_ALPHA],
+	                  ct.gauge[DECODE_CT_PARAM_IRMS]);
 	return false;
 }
 

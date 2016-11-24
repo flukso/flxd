@@ -22,22 +22,35 @@
  * SOFTWARE.
  */
 
+#include <stdbool.h>
 #include <sys/time.h>
 #include "config.h"
 #include "shift.h"
 
 const uint8_t map_shift_1p[] = { 0, 0, 3, 3, 3, 0 };
 int32_t alpha[CONFIG_MAX_ANALOG_PORTS] = { 0 };
+int32_t irms[CONFIG_MAX_ANALOG_PORTS] = { 0 };
+
+void shift_init(void)
+{
+	int i;
+
+	for (i = 0; i < CONFIG_MAX_ANALOG_PORTS; i++) {
+		alpha[i] = 0;
+		irms[i] = 0;
+	}
+}
 
 static int32_t shift_q20dot11_to_int(int32_t x)
 {
 	return x >= 0 ? (x + (1 << 10)) >> 11 : (x - (1 << 10)) >> 11;
 }
 
-void shift_push_alpha(int port, int32_t a)
+void shift_push_params(int port, int32_t a, int32_t i)
 {
 	if (port < CONFIG_MAX_ANALOG_PORTS) {
 		alpha[port] = shift_q20dot11_to_int(a);
+		irms[port] = i;
 	}
 }
 
@@ -81,26 +94,90 @@ static void shift_pub(void)
 	                  conf.mqtt.retain);
 }
 
-void shift_calculate(void)
+static int32_t shift_calculate_shift(int32_t a)
+{
+	a += 30;
+	if (a < 0) {
+		a += 360;
+	}
+	return a / 60;
+}
+
+static void shift_calculate_1p(void)
 {
 	int i;
-	int32_t a;
 
 	for (i = 0; i < CONFIG_MAX_ANALOG_PORTS; i++) {
 		if (conf.port[i].enable == 0) {
 			continue;
 		}
-		a = alpha[i] + 30;
-		if (a < 0) {
-			a += 360;
-		}
-		conf.port[i].shift = a / 60;
-		if (conf.main.phase == CONFIG_1PHASE) {
-			conf.port[i].shift = map_shift_1p[conf.port[i].shift];
-		};
+		conf.port[i].shift = map_shift_1p[shift_calculate_shift(alpha[i])];
 		if (conf.verbosity > 0) {
-			fprintf(stdout, SHIFT_DEBUG, i, alpha[i], a, conf.port[i].shift);
+			fprintf(stdout, SHIFT_DEBUG, i, alpha[i], conf.port[i].shift);
 		}
+	}
+}
+
+static void swap(int *el0, int *el1)
+{
+	int tmp;
+
+	tmp = *el0;
+	*el0 = *el1;
+	*el1 = tmp;
+}
+
+static void sort_irms_desc(int *el0, int *el1)
+{
+	if (irms[*el0] < irms[*el1]) {
+		swap(el0, el1);
+	}
+}
+
+static bool is_leading(int alpha0, int alpha1)
+{
+	int angle;
+
+	angle = alpha0 - alpha1;
+	if (angle < 0) {
+		angle += 360;
+	}
+	return angle < 180 ? true : false;
+}
+
+static void shift_calculate_3p(void)
+{
+	int i;
+	int seq[CONFIG_MAX_ANALOG_PORTS] = {0, 1, 2};
+
+	sort_irms_desc(&seq[0], &seq[1]);
+	sort_irms_desc(&seq[1], &seq[2]);
+	sort_irms_desc(&seq[0], &seq[1]);
+	if (conf.verbosity > 0) {
+		fprintf(stdout, SHIFT_SORT_DEBUG, seq[0], seq[1], seq[2]);
+	}
+	conf.port[seq[0]].shift = shift_calculate_shift(alpha[seq[0]]);
+	if (is_leading(alpha[seq[0]], alpha[seq[1]])) {
+		conf.port[seq[1]].shift = (conf.port[seq[0]].shift + 4) % 6;
+		conf.port[seq[2]].shift = (conf.port[seq[0]].shift + 2) % 6;
+	} else {
+		conf.port[seq[1]].shift = (conf.port[seq[0]].shift + 2) % 6;
+		conf.port[seq[2]].shift = (conf.port[seq[0]].shift + 4) % 6;
+	}
+	if (conf.verbosity > 0) {
+		for (i = 0; i < CONFIG_MAX_ANALOG_PORTS; i++) {
+			fprintf(stdout, SHIFT_DEBUG, i, alpha[i], conf.port[i].shift);
+		}
+	}
+}
+
+
+void shift_calculate(void)
+{
+	if (conf.main.phase == CONFIG_1PHASE) {
+		shift_calculate_1p();
+	} else {
+		shift_calculate_3p();
 	}
 	shift_uci_commit();	
 	config_push();

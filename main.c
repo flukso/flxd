@@ -112,6 +112,7 @@ static void ub_sighup(struct ubus_context *ctx, struct ubus_event_handler *ev,
 	}
 	config_init();
 	config_load_all();
+	shift_init();
 #ifdef WITH_YKW
 	ykw_set_theta(conf.ykw, conf.theta);
 	ykw_set_enabled(conf.ykw, conf.enabled);
