@@ -47,7 +47,7 @@ static bool configure_tty(int fd)
 	if (tcgetattr(fd, &term) == -1) {
 		return false;
 	}
-	if (cfsetospeed(&term, B576000) == -1) {
+	if (cfsetospeed(&term, B460800) == -1) {
 		return false;
 	}
 	/* configure tty in raw mode */
