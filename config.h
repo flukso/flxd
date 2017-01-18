@@ -16,6 +16,7 @@
 #define CONFIG_STR_MAX				64
 #define CONFIG_MAX_SENSORS			39
 #define CONFIG_UCI_DEVICE			"system.@system[0].device"
+#define CONFIG_UCI_SERIAL			"system.@system[0].serial"
 #define CONFIG_UCI_PHASE			"flx.main.phase"
 #define CONFIG_UCI_LED_MODE			"flx.main.led_mode"
 #define CONFIG_UCI_THETA			"flx.main.theta"
@@ -82,6 +83,7 @@ struct port {
 struct main {
 	uint8_t phase;
 	uint8_t led;
+	uint8_t batch;
 };
 
 struct kube {

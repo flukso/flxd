@@ -213,6 +213,16 @@ static void config_load_main(void)
 #endif
 }
 
+static void config_load_batch(void)
+{
+	char serial[CONFIG_STR_MAX];
+
+	if (config_load_str(CONFIG_UCI_SERIAL, serial)) {
+		serial[4] = 0;
+		conf.main.batch = strtoul(&serial[2], NULL, 10);
+	}
+}
+
 void config_push(void)
 {
 	flx_tx(FLX_TYPE_PORT_CONFIG, (unsigned char *)&conf.port,
@@ -249,6 +259,7 @@ bool config_load_all(void)
 		config_load_port(i);
 	}
 	config_load_main();
+	config_load_batch();
 	config_push();
 	spin(SPIN_100K_CYCLES);
 	config_load_kube();
