@@ -19,6 +19,7 @@
 #define CONFIG_UCI_SERIAL			"system.@system[0].serial"
 #define CONFIG_UCI_PHASE			"flx.main.phase"
 #define CONFIG_UCI_LED_MODE			"flx.main.led_mode"
+#define CONFIG_UCI_MATH				"flx.main.math"
 #define CONFIG_UCI_THETA			"flx.main.theta"
 #define CONFIG_UCI_COLLECT_GRP		"kube.main.collect_group"
 #define CONFIG_ULOOP_TIMEOUT		1000 /* ms */
@@ -43,6 +44,16 @@
 	              (((uint32_t)(A) & 0x000000ff) << 24))
 
 enum {
+	CONFIG_PORT1,
+	CONFIG_PORT2,
+	CONFIG_PORT3,
+	CONFIG_PORT4,
+	CONFIG_PORT5,
+	CONFIG_PORT6,
+	CONFIG_PORT7
+};
+
+enum {
 	CONFIG_SENSOR_TYPE_ELECTRICITY,
 	CONFIG_SENSOR_TYPE_GAS,
 	CONFIG_SENSOR_TYPE_WATER,
@@ -53,6 +64,11 @@ enum {
 	CONFIG_1PHASE,
 	CONFIG_3PHASE_PLUS_N,
 	CONFIG_3PHASE_MINUS_N
+};
+
+enum {
+	CONFIG_MATH_NONE,
+	CONFIG_MATH_P2_PLUS_P1
 };
 
 struct mqtt {
@@ -84,6 +100,7 @@ struct main {
 	uint8_t phase;
 	uint8_t led;
 	uint8_t batch;
+	uint8_t math;
 };
 
 struct kube {
@@ -113,6 +130,7 @@ struct config {
 #ifdef WITH_YKW
 	int theta;
 	unsigned int enabled;
+	unsigned int masked;
 	struct ykw_ctx *ykw;
 #endif
 };

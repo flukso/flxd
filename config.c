@@ -223,6 +223,28 @@ static void config_load_batch(void)
 	}
 }
 
+static uint8_t config_math_to_index(char *math)
+{
+	if (strcmp("p2+p1", math) == 0) {
+		return CONFIG_MATH_P2_PLUS_P1;
+	} else {
+		return CONFIG_MATH_NONE;
+	}
+}
+
+static void config_load_math(void)
+{
+	char math[CONFIG_STR_MAX];
+
+	conf.main.math = config_load_str(CONFIG_UCI_MATH, math) ?
+		config_math_to_index(math) : CONFIG_MATH_NONE;
+#ifdef WITH_YKW
+	if (conf.main.math == CONFIG_MATH_P2_PLUS_P1) {
+		conf.masked |= (1 << CONFIG_PORT1);
+	}
+#endif
+}
+
 void config_push(void)
 {
 	flx_tx(FLX_TYPE_PORT_CONFIG, (unsigned char *)&conf.port,
@@ -247,6 +269,7 @@ bool config_load_all(void)
 
 #ifdef WITH_YKW
 	conf.enabled = 0;
+	conf.masked = 0;
 #endif
 	if (!config_load_str(CONFIG_UCI_DEVICE, conf.device))
 		return false;
@@ -260,6 +283,7 @@ bool config_load_all(void)
 	}
 	config_load_main();
 	config_load_batch();
+	config_load_math();
 	config_push();
 	spin(SPIN_100K_CYCLES);
 	config_load_kube();

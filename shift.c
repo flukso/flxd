@@ -103,18 +103,14 @@ static int32_t shift_calculate_shift(int32_t a)
 	return a / 60;
 }
 
-static void shift_calculate_1p(void)
+static void shift_calculate_1p(int i)
 {
-	int i;
-
-	for (i = 0; i < CONFIG_MAX_ANALOG_PORTS; i++) {
-		if (conf.port[i].enable == 0) {
-			continue;
-		}
-		conf.port[i].shift = map_shift_1p[shift_calculate_shift(alpha[i])];
-		if (conf.verbosity > 0) {
-			fprintf(stdout, SHIFT_DEBUG, i, alpha[i], conf.port[i].shift);
-		}
+	if (conf.port[i].enable == 0) {
+		return;
+	}
+	conf.port[i].shift = map_shift_1p[shift_calculate_shift(alpha[i])];
+	if (conf.verbosity > 0) {
+		fprintf(stdout, SHIFT_DEBUG, i, alpha[i], conf.port[i].shift);
 	}
 }
 
@@ -171,11 +167,20 @@ static void shift_calculate_3p(void)
 	}
 }
 
-
-void shift_calculate(void)
+void shift_calculate(int port)
 {
+	int i;
+
 	if (conf.main.phase == CONFIG_1PHASE) {
-		shift_calculate_1p();
+		if (port == SHIFT_PORT_WILDCARD) {
+			for (i = 0; i < CONFIG_MAX_ANALOG_PORTS; i++) {
+				shift_calculate_1p(i);
+			}
+		} else {
+			if (port > 0 && port < CONFIG_MAX_ANALOG_PORTS) {
+				shift_calculate_1p(port);
+			}
+		}
 	} else {
 		shift_calculate_3p();
 	}

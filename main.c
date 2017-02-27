@@ -116,16 +116,36 @@ static void ub_sighup(struct ubus_context *ctx, struct ubus_event_handler *ev,
 #ifdef WITH_YKW
 	ykw_set_theta(conf.ykw, conf.theta);
 	ykw_set_enabled(conf.ykw, conf.enabled);
+	ykw_set_masked(conf.ykw, conf.masked);
 #endif
 }
 
 static void ub_shift_calc(struct ubus_context *ctx, struct ubus_event_handler *ev,
                    const char *type, struct blob_attr *msg)
 {
+	int rem;
+	struct blob_attr *attr;
+	void *data;
+	int port = SHIFT_PORT_WILDCARD;
+
 	if (conf.verbosity > 0) {
 		fprintf(stdout, CONFIG_UBUS_DEBUG, CONFIG_UBUS_EV_SHIFT_CALC);
 	}
-	shift_calculate();
+	rem = blob_len(msg);
+	blobmsg_for_each_attr(attr, msg, rem) {
+		if (strcmp("port", blobmsg_name(attr)) == 0) {
+			data = blobmsg_data(attr);
+			switch(blob_id(attr)) {
+			case BLOBMSG_TYPE_INT32:
+				port = be32_to_cpu(*(uint32_t *)data) - 1;
+				break;
+			case BLOBMSG_TYPE_STRING: /* expecting "*" */
+				port = SHIFT_PORT_WILDCARD;
+				break;
+			}
+		}
+	}
+	shift_calculate(port);
 }
 
 static void ub_kube_ctrl(struct ubus_context *ctx, struct ubus_event_handler *ev,
@@ -169,7 +189,7 @@ static void ub_kube_packet_tx(struct ubus_context *ctx, struct ubus_event_handle
 			hex = blobmsg_data(attr);
 			len = blobmsg_len(attr) - 1; /* pinch off the null termination */
 			if (blob_id(attr) != BLOBMSG_TYPE_STRING) {
-				fprintf(stderr, "[kube] 'group' data type is not string\n");
+				fprintf(stderr, "[kube] 'hex' data type is not string\n");
 			} else if (len > FLX_KUBE_MAX_PACKET_SIZE * 2) {
 				fprintf(stderr, "[kube] tx packet exceeds max size\n");
 			} else {
@@ -263,7 +283,8 @@ int main(int argc, char **argv)
 	}
 
 #ifdef WITH_YKW
-	conf.ykw = ykw_new(conf.device, conf.theta, conf.enabled, conf.verbosity);
+	conf.ykw = ykw_new(conf.device, conf.theta, conf.enabled, conf.masked,
+	                   conf.verbosity);
 	if (conf.ykw == NULL) {
 		rc = 7;
 		goto oom;
