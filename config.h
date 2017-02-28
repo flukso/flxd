@@ -20,7 +20,7 @@
 #define CONFIG_UCI_PHASE			"flx.main.phase"
 #define CONFIG_UCI_LED_MODE			"flx.main.led_mode"
 #define CONFIG_UCI_MATH				"flx.main.math"
-#define CONFIG_UCI_THETA			"flx.main.theta"
+#define CONFIG_UCI_THETA			"ykw.param.theta"
 #define CONFIG_UCI_COLLECT_GRP		"kube.main.collect_group"
 #define CONFIG_ULOOP_TIMEOUT		1000 /* ms */
 #define CONFIG_UBUS_EV_SIGHUP		"flukso.sighup"
