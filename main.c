@@ -89,6 +89,9 @@ static void mosq_on_connect_cb(struct mosquitto *mosq, void *obj, int rc)
 			fprintf(stdout, "[mosq] connected to broker\n");
 		}
 		mosquitto_subscribe(mosq, NULL, conf.topic_bridge_stat, 0);
+#ifdef WITH_YKW
+		mosquitto_subscribe(mosq, NULL, conf.topic_ykw_config_push, 0);
+#endif
 	}
 }
 
@@ -97,10 +100,19 @@ static void mosq_on_message_cb(struct mosquitto *mosq, void *obj,
 {
 	if (strcmp(message->topic, conf.topic_bridge_stat) == 0) {
 		if (conf.verbosity > 0) {
-			fprintf(stdout, "[mosq] rx bridge status update: %.1s\n",
+			fprintf(stdout, "[mosq] rx %s: %.1s\n", message->topic,
 			        (char *)message->payload);
 		}
 		write(conf.fd_globe, message->payload, 1);
+#ifdef WITH_YKW
+	} else if (strcmp(message->topic, conf.topic_ykw_config_push) == 0) {
+		if (conf.verbosity > 0) {
+			fprintf(stdout, "[mosq] rx %s: %s\n", message->topic,
+			        (char *)message->payload);
+		}
+		config_push_ykw(message->payload);
+		ykw_set_theta(conf.ykw, conf.theta);
+#endif
 	}
 }
 
@@ -295,6 +307,10 @@ int main(int argc, char **argv)
 	snprintf(conf.mqtt.id, CONFIG_MQTT_ID_LEN, CONFIG_MQTT_ID_TPL, getpid());
 	snprintf(conf.topic_bridge_stat, CONFIG_STR_MAX, CONFIG_TOPIC_BRIDGE_STAT,
 	         conf.device);
+#ifdef WITH_YKW
+	snprintf(conf.topic_ykw_config_push, CONFIG_STR_MAX, YKW_TOPIC_CONFIG_PUSH,
+	         conf.device);
+#endif
 	conf.mosq = mosquitto_new(conf.mqtt.id, conf.mqtt.clean_session, &conf);
 	if (!conf.mosq) {
 		switch (errno) {

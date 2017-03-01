@@ -131,6 +131,7 @@ struct config {
 	int theta;
 	unsigned int enabled;
 	unsigned int masked;
+	char topic_ykw_config_push[CONFIG_STR_MAX];
 	struct ykw_ctx *ykw;
 #endif
 };
@@ -141,5 +142,8 @@ bool config_init(void);
 bool config_load_all(void);
 void config_push(void);
 void config_push_kube(void);
+#ifdef WITH_YKW
+void config_push_ykw(char *json);
+#endif
 
 #endif

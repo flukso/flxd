@@ -3,7 +3,7 @@ LIBDIR =
 
 BIN = flxd
 OBJS = main.o flx.o config.o shift.o binary.o
-LIBS = -lm -lubox -lubus -luci -lmosquitto
+LIBS = -lm -lubox -lubus -luci -lmosquitto -ljson-c
 CSTD = -std=gnu99
 WARN = -Wall -pedantic
 

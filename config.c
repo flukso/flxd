@@ -22,6 +22,7 @@
  * SOFTWARE.
  */
 
+#include <json/json.h>
 #include "math.h"
 #include "config.h"
 #include "flx.h"
@@ -203,18 +204,23 @@ static uint8_t config_phase_to_index(char *phase)
 static void config_load_main(void)
 {
 	char str_value[CONFIG_STR_MAX];
-	int theta_watt;
 
 	conf.main.phase = config_load_str(CONFIG_UCI_PHASE, str_value) ?
 		config_phase_to_index(str_value) : CONFIG_1PHASE;
 	conf.main.led = (uint8_t)config_load_uint(CONFIG_UCI_LED_MODE,
 	                                          CONFIG_LED_MODE_DEFAULT);
+}
+
 #ifdef WITH_YKW
+static void config_load_theta(void)
+{
+	int theta_watt;
+
 	theta_watt = config_load_uint(CONFIG_UCI_THETA, YKW_DEFAULT_THETA);
 	conf.theta = conf.main.phase == CONFIG_3PHASE_MINUS_N ?
 	                 theta_watt * 1000 / 133 : theta_watt * 1000 / 230;
-#endif
 }
+#endif
 
 static void config_load_batch(void)
 {
@@ -266,6 +272,37 @@ void config_push_kube(void)
 	       sizeof(struct kube));
 }
 
+#ifdef WITH_YKW
+void config_push_ykw(char *json)
+{
+	json_object *jobj;
+	struct uci_ptr ptr;
+	char str[CONFIG_STR_MAX];
+
+	jobj = json_tokener_parse(json);
+	json_object_object_foreach(json_object_object_get(jobj, "config"), key, val) {
+		if (strncmp(key, YKW_PARAM_PREFIX, strlen(YKW_PARAM_PREFIX)) != 0) {
+			continue;
+		}
+		strncpy(str, key, CONFIG_STR_MAX);
+		if (uci_lookup_ptr(conf.uci_ctx, &ptr, str, true) != UCI_OK) {
+			uci_perror(conf.uci_ctx, key);
+			continue;
+		}
+		if (!(ptr.flags & UCI_LOOKUP_COMPLETE)) {
+			conf.uci_ctx->err = UCI_ERR_NOTFOUND;
+			uci_perror(conf.uci_ctx, key);
+			continue;
+		}
+		ptr.value = json_object_to_json_string(val);
+		if (uci_set(conf.uci_ctx, &ptr) == UCI_OK) {
+			uci_commit(conf.uci_ctx, &ptr.p, false);
+		}
+	}
+	config_load_theta();
+}
+#endif
+
 bool config_load_all(void)
 {
 	int i;
@@ -285,6 +322,9 @@ bool config_load_all(void)
 		config_load_port(i);
 	}
 	config_load_main();
+#ifdef WITH_YKW
+	config_load_theta();
+#endif
 	config_load_batch();
 	config_load_math();
 	config_push();
