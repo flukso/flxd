@@ -50,6 +50,7 @@ enum flx_type {
 	FLX_TYPE_SAR,
 	FLX_TYPE_SDADC,
 	FLX_TYPE_RFM,
+	FLX_TYPE_EXIT,
 	FLX_MAX_TYPES
 };
 

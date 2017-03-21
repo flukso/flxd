@@ -29,7 +29,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <unistd.h>
+#include <signal.h>
 #include <termios.h>
 #include <mosquitto.h>
 #include <stdint.h>
@@ -39,6 +39,11 @@
 #include "shift.h"
 
 struct config conf;
+
+static void sighandler(int sig)
+{
+	uloop_end();
+}
 
 static bool configure_tty(int fd)
 {
@@ -248,6 +253,7 @@ struct config conf = {
 int main(int argc, char **argv)
 {
 	int opt, rc = 0;
+	struct sigaction sa;
 
 	while ((opt = getopt(argc, argv, "hv")) != -1) {
 		switch (opt) {
@@ -357,6 +363,16 @@ int main(int argc, char **argv)
 	                            CONFIG_UBUS_EV_KUBE_CTRL);
 	ubus_register_event_handler(conf.ubus_ctx, &conf.ubus_ev_kube_packet_tx,
 	                            CONFIG_UBUS_EV_KUBE_PKT_TX);
+
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
+	sa.sa_handler = sighandler;
+	if (sigaction(SIGTERM, &sa, NULL) == -1) {
+		fprintf(stderr, "Failed to set signal handler.\n");
+		rc = 10;
+		goto finish;
+	}
+
 	uloop_run();
 	uloop_done();
 	goto finish;
@@ -374,6 +390,7 @@ finish:
 	if (conf.ubus_ctx != NULL) {
 		ubus_free(conf.ubus_ctx);
 	}
+	flx_tx(FLX_TYPE_EXIT, NULL, 0);
 	close(conf.flx_ufd.fd);
 	uci_free_context(conf.uci_ctx);
 	return rc;
