@@ -236,6 +236,8 @@ static uint8_t config_math_to_index(char *math)
 {
 	if (strcmp("p2+p1", math) == 0) {
 		return CONFIG_MATH_P2_PLUS_P1;
+	} else if (strcmp("p1+p2+p3", math) == 0) {
+		return CONFIG_MATH_P1_PLUS_P2_PLUS_P3;
 	} else {
 		return CONFIG_MATH_NONE;
 	}

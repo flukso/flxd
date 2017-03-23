@@ -68,7 +68,8 @@ enum {
 
 enum {
 	CONFIG_MATH_NONE,
-	CONFIG_MATH_P2_PLUS_P1
+	CONFIG_MATH_P2_PLUS_P1,
+	CONFIG_MATH_P1_PLUS_P2_PLUS_P3
 };
 
 struct mqtt {
