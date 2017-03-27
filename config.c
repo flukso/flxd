@@ -38,7 +38,8 @@ const char* config_uci_port_tpl[] = {
 	"flx.%d.constant",
 	"flx.%d.current",
 	"flx.%d.shift",
-	"flx.%d.enable"
+	"flx.%d.enable",
+	"flx.%d.trigger"
 };
 
 bool config_init(void)
@@ -157,11 +158,22 @@ static uint8_t config_current_to_index(uint32_t current)
 	return i;
 }
 
+static uint8_t config_trigger_to_index(char *str_value)
+{
+	if (strcmp(str_value, "edge") == 0) {
+		return CONFIG_TRIGGER_EDGE;
+	} else if (strcmp(str_value, "level") == 0) {
+		return CONFIG_TRIGGER_LEVEL;
+	}
+	return CONFIG_TRIGGER_EDGE;
+}
+
 static void config_load_port(int port)
 {
 	int i;
 	double tmpint, tmpfrac;
 	char key[CONFIG_STR_MAX];
+	char str_value[CONFIG_STR_MAX];
 
 	for (i = 0; i < CONFIG_MAX_PORT_PARAMS; i++) {
 		snprintf(key, CONFIG_STR_MAX, config_uci_port_tpl[i], port + 1);
@@ -185,6 +197,10 @@ static void config_load_port(int port)
 				conf.enabled |= (1 << port);
 			}
 #endif
+			break;
+		case 4:
+			conf.port[port].trigger = config_load_str(key, str_value) ?
+				config_trigger_to_index(str_value) : CONFIG_TRIGGER_EDGE;
 			break;
 		}
 	}

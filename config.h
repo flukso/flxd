@@ -11,7 +11,7 @@
 
 #define CONFIG_MAX_PORTS			7
 #define CONFIG_MAX_ANALOG_PORTS		3
-#define CONFIG_MAX_PORT_PARAMS		4
+#define CONFIG_MAX_PORT_PARAMS		5
 #define CONFIG_MAX_SENSOR_PARAMS	3
 #define CONFIG_STR_MAX				64
 #define CONFIG_MAX_SENSORS			39
@@ -72,6 +72,11 @@ enum {
 	CONFIG_MATH_P1_PLUS_P2_PLUS_P3
 };
 
+enum {
+	CONFIG_TRIGGER_EDGE,
+	CONFIG_TRIGGER_LEVEL
+};
+
 struct mqtt {
 	char *host;
 	int port;
@@ -94,7 +99,7 @@ struct port {
 	uint8_t current;
 	uint8_t shift;
 	uint8_t enable;
-	uint8_t padding;
+	uint8_t trigger;
 };
 
 struct main {
