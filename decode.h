@@ -117,24 +117,36 @@ const char *decode_ct_gauge_unit[DECODE_MAX_CT_PARAMS] = {
 	"°"
 };
 
-const char *decode_pulse_counter_unit[] = {
+const char *decode_pulse_counter_unit[CONFIG_SENSOR_MAX_TYPES] = {
+	"Wh",
 	"Wh",
 	"L",
 	"L",
+	"L",
+	"g",
+	"s",
 	""
 };
 
-const char *decode_pulse_gauge_unit[] = {
+const char *decode_pulse_gauge_unit[CONFIG_SENSOR_MAX_TYPES] = {
 	"W",
-	"L/day",
-	"L/day",
-	""
+	"W",
+	"L/s",
+	"L/s",
+	"L/s",
+	"g/s",
+	"",
+	"1/s"
 };
 
-const float decode_pulse_gauge_factor[] = {
+const float decode_pulse_gauge_factor[CONFIG_SENSOR_MAX_TYPES] = {
 	3.6e3f,
-	24 * 3.6e3f,
-	24 * 3.6e3f,
+	3.6e3f,
+	1.0f,
+	1.0f,
+	1.0f,
+	1.0f,
+	1.0f,
 	1.0f
 };
 

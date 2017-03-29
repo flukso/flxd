@@ -96,10 +96,18 @@ static uint8_t config_type_to_index(char *type)
 {
 	if (strcmp("electricity", type) == 0) {
 		return CONFIG_SENSOR_TYPE_ELECTRICITY;
+	} else if (strcmp("heat", type) == 0) {
+		return CONFIG_SENSOR_TYPE_HEAT;
 	} else if (strcmp("gas", type) == 0) {
 		return CONFIG_SENSOR_TYPE_GAS;
+	} else if (strcmp("fuel", type) == 0) {
+		return CONFIG_SENSOR_TYPE_FUEL;
 	} else if (strcmp("water", type) == 0) {
 		return CONFIG_SENSOR_TYPE_WATER;
+	} else if (strcmp("pellet", type) == 0) {
+		return CONFIG_SENSOR_TYPE_PELLET;
+	} else if (strcmp("time", type) == 0) {
+		return CONFIG_SENSOR_TYPE_TIME;
 	} else {
 		return CONFIG_SENSOR_TYPE_OTHER;
 	}
